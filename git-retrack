@@ -2,9 +2,11 @@
 
 # Based on an alias written by doener on #git.
 
-# usage: git retrack URL BRANCH
+# usage: git retrack REMOTE URL BRANCH
 
 branch=$(git rev-parse --symbolic-full-name HEAD | sed 's/refs\/heads\///')
 
+git remote add -f $1 "$2" || echo But that\'s perfectly OK.
+
 git config branch.$branch.remote "$1"
-git config branch.$branch.merge "refs/heads/${2:-$branch}"
+git config branch.$branch.merge "refs/heads/${3:-$branch}"
