@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [[ -z "$1" ]]; then
+    ancestor=master
+else
+    ancestor=$1
+    shift 1
+fi
+current="$ancestor"
+
+ancestor=$(git rev-parse $ancestor)
+
+for head in $(git rev-parse --branches); do
+    if [[ $head != $ancestor ]]; then
+	if git rev-list -30 $head | grep -q $ancestor; then
+	    current="$current $(git describe --all --abbrev=0 $head | sed 's/heads\///')"
+	fi
+    fi
+done
+
+git show-branch $current

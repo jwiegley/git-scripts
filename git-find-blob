@@ -1,0 +1,13 @@
+#!/bin/sh
+
+filename=$1
+
+want=$(git-hash-object "$filename")
+
+git-rev-list --since="6 months ago" HEAD | while read commit ; do
+    git-ls-tree -r $commit | while read perm type hash filename; do 
+        if test "$want" = "$hash"; then
+            echo matched $filename in commit $commit
+        fi
+    done
+done

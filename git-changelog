@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+
+# git-changelog
+#
+# version 1.0, by John Wiegley
+#
+# The purpose of this code is to turn "git log" output into a complete
+# ChangeLog, for projects who wish to begin using a ChangeLog, but haven't
+# been.
+
+import datetime
+import string
+import sys
+import re
+
+from subprocess import *
+
+p = Popen("git log --stat %s" % string.join(sys.argv[1:], " "),
+          shell = True, stdout = PIPE).stdout
+
+line = p.readline()
+while line:
+    match = re.match("commit ([0-9a-f]+)", line)
+    assert match
+    hash_id = match.group(1)
+
+    line = p.readline()
+
+    match = re.match("Author: (.+)", line)
+    assert match
+    author = match.group(1)
+    author = re.sub(" <", "  <", author)
+
+    line = p.readline()
+
+    match = re.match("Date: +(.+?) [-+][0-9]{4}", line)
+    assert match
+    # Tue Sep 30 05:43:49 2003 +0000
+    date = datetime.datetime.strptime(match.group(1), '%a %b %d %H:%M:%S %Y')
+
+    line = p.readline()         # absorb separator
+    line = p.readline()
+
+    log_text = ""
+    while line and line != '\n':
+        if not log_text:
+            log_text += line[4:]
+        else:
+            log_text += "\t" + line[4:]
+
+        line = p.readline()
+
+    line = p.readline()
+
+    files = []
+    while line and line != '\n':
+        match = re.match(" (.+?) +\\|", line)
+        if match:
+            files.append(match.group(1))
+            line = p.readline()
+        else:
+            break
+
+    line = p.readline()
+
+    fp = Popen("fmt", shell = True, stdin = PIPE, stdout = PIPE)
+
+    fp.stdin.write("\t* %s: %s\n" % (string.join(files, ",\n\t"), log_text))
+    fp.stdin.close()
+    log_text = fp.stdout.read()
+
+    del fp
+
+    print "%s  %s\n\n%s\t* commit %s\n" % \
+        (date.strftime("%Y-%m-%d"), author, log_text, hash_id)
+
+    line = p.readline()
+
+# git-changelog ends here

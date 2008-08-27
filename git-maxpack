@@ -1,0 +1,5 @@
+#!/bin/sh
+
+git gc
+git prune
+git repack -a -d --depth=250 --window=250

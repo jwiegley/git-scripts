@@ -1,0 +1,26 @@
+#!/bin/bash
+
+git clean -f -x -d
+git checkout $1
+
+rm -fr /usr/local/stow/git-$1
+
+make prefix=/usr/local/stow/git-$1 -j3 install
+
+git checkout origin/man
+
+rsync -av man1/ /usr/local/stow/git-$1/share/man/man1/
+rsync -av man5/ /usr/local/stow/git-$1/share/man/man5/
+rsync -av man7/ /usr/local/stow/git-$1/share/man/man7/
+
+git clean -f -x -d
+git checkout master
+chown -R johnw .
+
+git reset --hard HEAD
+git merge origin/master
+
+cd /usr/local/stow
+stow -D git-*
+
+stow git-$1

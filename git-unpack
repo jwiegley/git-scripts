@@ -1,0 +1,12 @@
+#!/bin/sh
+
+mkdir /tmp/tmpgit.$$
+GIT_DIR=/tmp/tmpgit.$$ git init
+
+for pack in .git/objects/pack/*.pack; do
+    GIT_DIR=/tmp/tmpgit.$$ git unpack-objects < $pack
+done
+
+rsync -a --delete /tmp/tmpgit.$$/objects/ .git/objects/
+
+rm -fr /tmp/tmpgit.$$

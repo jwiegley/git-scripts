@@ -1,0 +1,18 @@
+#!/bin/bash
+
+stat=true
+if [[ "$1" == "-p" ]]; then
+    stat=false
+    shift 1
+fi
+
+if [[ $# == 2 ]]; then
+    git checkout $2
+    echo ======================================================================
+fi
+
+if [[ $stat == true ]]; then
+    diff -w -U3 -r -x .git . "$1" | diffstat | grep -v only$
+else
+    diff -w -U3 -r -x .git . "$1"
+fi

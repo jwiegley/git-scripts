@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [[ $# == 0 ]]; then
+    echo usage: git find-children REFS...
+fi
+
+for ref in "$@"; do
+    for sha1 in $(git rev-list "$@")
+    do
+    done
+done

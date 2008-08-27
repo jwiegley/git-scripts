@@ -1,0 +1,162 @@
+#!/usr/bin/env ruby
+
+require 'yaml'
+CONFIG_FN = ".git-wtfrc"
+
+class Numeric; def pluralize s; "#{to_s} #{s}" + (self != 1 ? "s" : "") end end
+
+def die s
+  $stderr.puts "Error: #{s}"
+  exit(-1)
+end
+
+$long = ARGV.delete("--long") || ARGV.delete("-l")
+
+## find config file
+$config = { "versions" => [], "ignore" => [], "max_commits" => 5 }.merge begin
+  p = File.expand_path "."
+  fn = while true
+    fn = File.join p, CONFIG_FN
+    break fn if File.exist? fn
+    pp = File.expand_path File.join(p, "..")
+    break if p == pp
+    p = pp
+  end
+
+  if fn
+    YAML::load_file fn
+  else
+    #$stderr.puts "Warning: no config file found. Specify version branches by creating <project_root>/#{CONFIG_FN}"
+    remotes = `git config --get-regexp ^remote\\.`.split("\n")
+    die "I can't find your gits" if remotes.empty?
+    repo = remotes.first =~ /^remote\.(\S+?)\./ ? $1 : "origin"
+    { "versions" => %w(master next edge).map { |b| "#{repo}/#{b}" } }
+  end
+end
+
+## the set of commits in 'to' that aren't in 'from'.
+## if empty, 'to' has been merged into 'from'.
+def commits_between from, to
+  if $long
+    `git log --pretty=format:"- %s [%h] (%ae; %ar)" #{from}..#{to}`
+  else
+    `git log --pretty=format:"- %s [%h]" #{from}..#{to}`
+  end.split(/[\r\n]+/)
+end
+
+def show_commits commits, label, prefix=""
+  if commits.empty?
+    puts "#{prefix}#{label}: none"
+  else
+    puts "#{prefix}#{label}:" if label
+    commits[0 ... $config["max_commits"]].each { |c| puts "#{prefix}#{c}" }
+    if commits.size > $config["max_commits"]
+      puts "#{prefix}... and #{commits.size - $config["max_commits"]} more."
+    end
+  end
+end
+
+def ahead_behind_string ahead, behind
+  [ahead.empty? ? nil : "#{ahead.size.pluralize 'commit'} ahead",
+   behind.empty? ? nil : "#{behind.size.pluralize 'commit'} behind"].
+   compact.join("; ")
+end
+
+def show b, all_branches
+  puts "Local branch: #{b[:local_branch]}"
+  both = false
+
+  if b[:remote_branch]
+    pushc = commits_between b[:remote_branch], b[:local_branch]
+    pullc = commits_between b[:local_branch], b[:remote_branch]
+
+    both = !pushc.empty? && !pullc.empty?
+    if pushc.empty?
+      puts "[x] in sync with remote"
+    else
+      action = both ? "push after rebase / merge" : "push"
+      puts "[ ] NOT in sync with remote (needs #{action})"
+      show_commits pushc, nil, " "
+    end
+
+    puts "\nRemote branch: #{b[:remote_branch]} (#{b[:remote_url]})"
+
+    if pullc.empty?
+      puts "[x] in sync with local"
+    else
+      action = pushc.empty? ? "merge" : "rebase / merge"
+      puts "[ ] NOT in sync with local (needs #{action})"
+      show_commits pullc, nil, " "
+
+      both = !pushc.empty? && !pullc.empty?
+    end
+  end
+
+  vbs, fbs = all_branches.partition { |name, br| $config["versions"].include? br[:remote_branch] }
+  if $config["versions"].include? b[:remote_branch]
+    puts "\nFeature branches:" unless fbs.empty?
+    fbs.each do |name, br|
+      remote_ahead = commits_between b[:remote_branch], br[:local_branch]
+      local_ahead = commits_between b[:local_branch], br[:local_branch]
+      if local_ahead.empty? && remote_ahead.empty?
+        puts "[x] #{br[:name]} is merged in"
+      elsif local_ahead.empty?
+        puts "(x) #{br[:name]} merged in (only locally)"
+      else
+        behind = commits_between br[:local_branch], b[:remote_branch]
+        puts "[ ] #{br[:name]} is NOT merged in (#{ahead_behind_string local_ahead, behind})"
+        show_commits local_ahead, nil, "   "
+      end
+    end
+  else
+    puts "\nVersion branches:" unless vbs.empty? # unlikely
+    vbs.each do |v, br|
+      ahead = commits_between v, b[:local_branch]
+      if ahead.empty?
+        puts "[x] merged into #{v}"
+      else
+        behind = commits_between b[:local_branch], v
+        puts "[ ] NOT merged into #{v}"
+      end
+    end
+  end
+
+  puts "\nWARNING: local and remote branches have diverged. A merge will occur unless you rebase." if both
+end
+
+branches = `git show-ref`.inject({}) do |hash, l|
+  sha1, ref = l.chomp.split " refs/"
+  next hash if $config["ignore"].member? ref
+  next hash unless ref =~ /^heads\/(.+)/
+  name = $1
+  hash[name] = { :name => name, :local_branch => ref }
+  hash
+end
+
+remotes = `git config --get-regexp ^remote\.\*\.url`.inject({}) do |hash, l|
+  l =~ /^remote\.(.+?)\.url (.+)$/ or next hash
+  hash[$1] ||= $2
+  hash
+end
+
+`git config --get-regexp ^branch\.`.each do |l|
+  case l
+  when /branch\.(.*?)\.remote (.+)/
+    branches[$1] ||= {}
+    branches[$1][:remote] = $2
+    branches[$1][:remote_url] = remotes[$2]
+  when /branch\.(.*?)\.merge ((refs\/)?heads\/)?(.+)/
+    branches[$1] ||= {}
+    branches[$1][:remote_mergepoint] = $4
+  end
+end
+
+branches.each { |k, v| v[:remote_branch] = "#{v[:remote]}/#{v[:remote_mergepoint]}" if v[:remote] && v[:remote_mergepoint] }
+
+targets = if ARGV.empty?
+  [`git symbolic-ref HEAD`.chomp.sub(/^refs\/heads\//, "")]
+else
+  ARGV
+end.map { |t| branches[t] or die "can't find branch #{t.inspect}" }
+
+targets.each { |t| show t, branches }

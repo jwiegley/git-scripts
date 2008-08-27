@@ -1,0 +1,260 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# git-darcs-record, emulate "darcs record" interface on top of a git repository
+#
+# Usage:
+# git-darcs-record first asks for any new file (previously
+#    untracked) to be added to the index.
+# git-darcs-record then asks for each hunk to be recorded in
+#    the next commit. File deletion and binary blobs are supported
+# git-darcs-record finally asks for a small commit message and
+#    executes the 'git commit' command with the newly created
+#    changeset in the index
+
+
+# Copyright (C) 2007 Raphaël Slinckx <raphael@slinckx.net>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+import re, pprint, sys, os
+
+BINARY = re.compile("GIT binary patch")
+HEADER = re.compile("diff --git a/(.*) b/(.*)")
+class Hunk:
+	def __init__(self, lines, binary):
+		self.diff = None
+		self.lines = lines
+		self.keep = False
+		self.binary = binary
+	
+	def format(self):
+		output = self.diff.header.modified + "\n"
+		if self.diff.header.deleted:
+			output = "Removed file: " + output
+		if self.binary:
+			output = "Binary file changed: " + output
+
+		if not self.binary:
+			output += "\n".join(self.lines) + "\n"
+
+		return output
+
+class Header:
+	def __init__(self, lines):
+		self.lines = lines
+		self.modified = None
+		self.deleted = False
+
+		# Extract useful info from header from git
+		for line in lines:
+			if HEADER.match(line):
+				match = HEADER.match(line)
+				self.modified = match.group(1)
+			if line.startswith("deleted "):
+				self.deleted = True
+
+		# Make sure we know what file we are modifying
+		assert self.modified
+
+class Diff:
+	def __init__(self, header, hunks):
+		self.header = header
+		self.hunks = hunks
+		# Put a reference to ourselves in the hunks
+		for hunk in self.hunks:
+			hunk.diff = self
+		self.keep = False
+	
+	def filter(self):
+		output = '\n'.join(self.header.lines) + "\n"
+		for hunk in self.hunks:
+			if not hunk.keep:
+				continue
+			output += '\n'.join(hunk.lines) + "\n"
+		return output
+
+	@classmethod
+	def filter_diffs(kls, diffs):
+		output = ""
+		for diff in diffs:
+			if not diff.keep:
+				continue
+			output += diff.filter()
+		return output
+	
+	@classmethod
+	def parse(kls, lines):
+		in_header = True
+		binary = False
+		header = []
+		hunks = []
+		current_hunk = []
+		for line in lines:
+			if in_header and (line[0] not in (" ", "@", "\\") or line.startswith("+++ ") or line.startswith("--- ")) and not BINARY.match(line):
+				header.append(line)
+			elif BINARY.match(line):
+				in_header = False
+				binary = True
+				header.append(line)
+			elif len(line) >= 1 and line[0] == "@":
+				in_header = False
+				if current_hunk:
+					hunks.append(Hunk(current_hunk, binary))
+				current_hunk = []
+				current_hunk.append(line)
+			else:
+				current_hunk.append(line)
+		if current_hunk:
+			hunks.append(Hunk(current_hunk, binary))
+		return Diff(Header(header), hunks)
+
+	@classmethod
+	def split(kls, lines):
+		diffs = []
+		current_diff = []
+		for line in lines:
+			if line.startswith("diff --git "):
+				if current_diff:
+					diffs.append(current_diff)
+				current_diff = []
+				current_diff.append(line)
+			else:
+				current_diff.append(line)
+		if current_diff:
+			diffs.append(current_diff)
+		return [Diff.parse(lines) for lines in diffs]
+
+def read_answer(question, allowed_responses=["Y", "n", "d", "a"]):
+	#Make sure there is alway a default selection
+	assert [r for r in allowed_responses if r.isupper()]
+
+	while True:
+		resp = raw_input("%s [%s] : " % (question, "".join(allowed_responses)))
+		if resp in [r.lower() for r in allowed_responses]:
+			break
+		elif resp == "":
+			resp = [r for r in allowed_responses if r.isupper()][0].lower()
+			break
+		print 'Unexpected answer: %r' % resp
+	return resp
+
+
+def setup_git_dir():
+	global GIT_DIR
+	GIT_DIR = os.getcwd()
+	while not os.path.exists(os.path.join(GIT_DIR, ".git")):
+		GIT_DIR = os.path.dirname(GIT_DIR)
+		if GIT_DIR == "/":
+			return False
+	os.chdir(GIT_DIR)
+	return True
+
+def git_get_untracked_files():
+	return [f.strip() for f in os.popen("git ls-files --others --exclude-from='%s' --exclude-per-directory=.gitignore" % (os.path.join(GIT_DIR, ".git", "info", "exclude"))).readlines()]
+
+def git_track_file(f):
+	os.spawnvp(os.P_WAIT, "git", ["git", "add", f])
+
+def git_diff():
+	return os.popen("git diff -u --no-color --binary").readlines()
+
+def git_apply(patch):
+	stdin, stdout = os.popen2(["git", "apply", "--cached",  "-"])
+	stdin.write(patch)
+	stdin.close()
+	output = stdout.read()
+	stdout.close()
+	os.wait()
+	return output
+
+def git_status():
+	os.spawnvp(os.P_WAIT, "git", ["git", "status"])
+
+def git_commit(msg):
+	os.spawnvp(os.P_WAIT, "git", ["git", "commit", "-m", patch_name])
+
+# Main loop ------------------------
+if not setup_git_dir():
+	print "Must be in a git (sub-)directory! Exiting..."
+	sys.exit()
+
+# Ask for new files ----------------
+git_untracked_files = git_get_untracked_files()
+git_track_files = []
+all = False
+done = False
+for i, f in enumerate(git_untracked_files):
+	if not all:
+		print "Add file: ", f
+		resp = read_answer("Shall I add this file? (%d/%d)" % (i+1, len(git_untracked_files)))
+	else:
+		resp = "y"
+
+	if resp == "y":
+		git_track_files.append(f)
+	elif resp == "a":
+		git_track_files.append(f)
+		all = True
+	elif resp == "d":
+		done = True
+		break
+
+# Ask for each hunk of the diff
+diffs = Diff.split([line[:-1] for line in git_diff()])
+total_hunks = sum([len(diff.hunks) for diff in diffs])
+
+n_hunk = 1
+for diff in diffs:
+	if done:
+		break
+	for hunk in diff.hunks:
+		# Check if we are in override mode
+		if not all:
+			print
+			print hunk.format()
+			resp = read_answer('Shall I record this change? (%d/%d)' % (n_hunk, total_hunks))
+		# Otherwise say 'y' to all remaining patches
+		else:
+			resp = "y"
+
+		if resp == "y":
+			diff.keep = True
+			hunk.keep = True
+		elif resp == "a":
+			diff.keep = True
+			hunk.keep = True
+			all = True
+		elif resp == "d":
+			done = True
+			break
+
+		n_hunk += 1
+
+# Add new files to track
+for f in git_track_files:
+	git_track_file(f)
+
+# Generate a new patch to be used with git apply
+new_patch = Diff.filter_diffs(diffs)
+if new_patch:
+	print git_apply(new_patch)
+
+if new_patch or git_track_files:
+	git_status()
+	patch_name = raw_input("What is the patch name? ")
+	git_commit(patch_name)
+else:
+	print "Ok, if you don't want to record anything, that's fine!"

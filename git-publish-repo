@@ -1,0 +1,3 @@
+#!/bin/sh
+
+for i in "$@" ; do rsync -av $i/.git jw:/srv/git/$i.git ; done
