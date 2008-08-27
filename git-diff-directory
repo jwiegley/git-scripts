@@ -6,13 +6,11 @@ if [[ "$1" == "-p" ]]; then
     shift 1
 fi
 
-if [[ $# == 2 ]]; then
-    git checkout $2
-    echo ======================================================================
-fi
+HERE=$(pwd)
 
-if [[ $stat == true ]]; then
-    diff -w -U3 -r -x .git . "$1" | diffstat | grep -v only$
-else
-    diff -w -U3 -r -x .git . "$1"
-fi
+(cd "$1" && git --git-dir=$HERE/.git diff ${2:-HEAD}) | \
+    if [[ $stat == true ]]; then \
+        diffstat | grep -v only$; \
+    else \
+        cat; \
+    fi
