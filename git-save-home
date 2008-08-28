@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# If you keep your home directory version-controlled, you likely don't
+# want to version every single file.  Things like editor
+# configuration, notes files, and html are likely candidates, while
+# music, video, and random downloads are not.  In order to accommodate
+# this scenario, you can ignore everything like so:
+#
+#   $ more ~/.gitignore 
+#   *
+#
+# Then, force git-add to track files you care about.  Unfortunately
+# with git-add you have to add a -f every time the file is modified.
+# I don't understand why since git is already tracking the contents.
+
+MODIFIED=$(git status | grep modified | cut -d " " -f 3-)
+
+if [ "x$MODIFIED" == x ]; then
+  echo no changes
+else
+  git add -f $MODIFIED \
+    && git commit -q -m "Save home." \
+    && git diff --stat head^
+fi
