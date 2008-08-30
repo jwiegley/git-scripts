@@ -1,33 +1,52 @@
 #!/bin/bash
 
+mirror_only=false
+if [[ "$1" == --mirror ]]; then
+    mirror_only=true
+    shift 1
+fi
+
+repack=false
+if [[ "$1" == --repack ]]; then
+    repack=true
+    shift 1
+fi
+
 find "$@" \( -name .git -o -name '*.git' \) -type d | \
     while read repo_dir
     do
 	if [[ -f "$repo_dir"/config ]]
 	then
-	    # If this is a git-svn repo, use git svn fetch
-	    if grep -q '^\[svn-remote ' "$repo_dir"/config
-	    then
-		echo git svn fetch: $repo_dir
-		GIT_DIR="$repo_dir" git svn fetch
+	    if [[ $mirror_only == false ]]; then
+		# If this is a git-svn repo, use git svn fetch
+		if grep -q '^\[svn-remote ' "$repo_dir"/config
+		then
+		    echo git svn fetch: $repo_dir
+		    GIT_DIR="$repo_dir" git svn fetch
 
-	    # If this is a gc-utils repo, use gc-utils update
-	    elif grep -q '^\[gc-utils\]' "$repo_dir"/config
-	    then
-		echo gc-utils update: $repo_dir
-		(cd "$repo_dir"; gc-utils update)
+		# If this is a gc-utils repo, use gc-utils update
+		elif grep -q '^\[gc-utils\]' "$repo_dir"/config
+		then
+		    echo gc-utils update: $repo_dir
+		    (cd "$repo_dir"; gc-utils update)
 
+		fi
+
+		GIT_DIR="$repo_dir" git remote update
 	    fi
-
-	    GIT_DIR="$repo_dir" git remote update
 
 	    for remote in $(GIT_DIR="$repo_dir" git remote)
 	    do
 		if [[ $remote == mirror ]]; then
 		    echo git push: $repo_dir -- $remote
 		    GIT_DIR="$repo_dir" git push --mirror $remote
-		    GIT_DIR="$repo_dir" git push --tags $remote
 		fi
 	    done
+
+	    if [[ $repack == true ]]; then
+		GIT_DIR="$repo_dir" git fsck --full && \
+		    GIT_DIR="$repo_dir" git repack -a -d -f --window=200 --depth=50 && \
+		    GIT_DIR="$repo_dir" git prune
+	    fi
 	fi
     done
