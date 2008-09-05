@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# git-rm-conflicts, version 1.2
+# git-rm-conflicts, version 1.3
 #
 # by John Wiegley <johnw@newartisans.com>
 #
@@ -49,7 +49,7 @@ fi
 for item in "$@"; do
     if [[ -d "$item" && $recursed == false ]]; then
 	if [[ $(basename "$item") != .git ]]; then
-	    git ls-files -z -m "$item" | xargs -0 $0 --recursed $wipe
+	    git ls-files -z -u "$item" | xargs -0 $0 --recursed $wipe
 	fi
     elif [[ -f "$item" ]]; then
 	echo Removing $wipe from: $item
