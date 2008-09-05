@@ -1,5 +1,26 @@
 #!/bin/bash
 
+# usage: git-find-fetch [--mirror] [--repack] DIRS...
+#
+# by John Wiegley <johnw@newartisans.com>
+#
+# The purpose of this script is to walk recursively through a set of
+# directories, fetching updates for any and all Git repositories found
+# therein.
+#
+# The script is smart about using git-svn or gc-utils, if those are needed to
+# get updates.  Further, it calls "git remote update" for each repository, to
+# ensure all its remotes are also updated.
+#
+# Lastly, if you have a remote called "mirror" in any repository, all its refs
+# will be "push --mirror"'d to that remote under the assumption that you want
+# the mirror to receive all the updates you just fetch'd.
+#
+# Options:
+#
+#   --mirror   Only push to your mirrors, do not fetch.
+#   --repack   Repack and prune repositories after updating them.
+
 mirror_only=false
 if [[ "$1" == --mirror ]]; then
     mirror_only=true
