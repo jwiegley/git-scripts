@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# git-rm-conflicts, version 1.1
+# git-rm-conflicts, version 1.2
 #
 # by John Wiegley <johnw@newartisans.com>
 #
@@ -29,6 +29,12 @@ EOF
     exit 1
 fi
 
+recursed=false
+if [[ "$1" == --recursed ]]; then
+    recursed=true
+    shift 1
+fi
+
 if [[ "$1" == ours ]]; then
     shift 1
     wipe=ours
@@ -41,19 +47,16 @@ else
 fi
 
 for item in "$@"; do
-    if [[ -d "$item" ]]; then
+    if [[ -d "$item" && $recursed == false ]]; then
 	if [[ $(basename "$item") != .git ]]; then
-	    find "$item" \( -name .git -prune -o -type f -print0 \) | \
-		xargs -0 $0 $wipe
+	    git ls-files -z -m "$item" | xargs -0 $0 --recursed $wipe
 	fi
     elif [[ -f "$item" ]]; then
 	echo Removing $wipe from: $item
 	if [[ $wipe == ours ]]; then
-	    perl -i -ne 'print unless /<<<<<</ .. /======/ or />>>>>>/;' "$@"
+	    perl -i -ne 'print unless /<<<<<</ .. /======/ or />>>>>>/;' "$item"
 	elif [[ $wipe == theirs ]]; then
-	    perl -i -ne 'print unless /<<<<<</ or /======/ .. />>>>>>/;' "$@"
+	    perl -i -ne 'print unless /<<<<<</ or /======/ .. />>>>>>/;' "$item"
 	fi
-    else
-	echo warning: Ignoring non file/directory '$item'
     fi
 done
