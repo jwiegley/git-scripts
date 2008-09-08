@@ -60,7 +60,7 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
 	    do
 		if [[ $remote == mirror ]]; then
 		    echo git push: $repo_dir -- $remote
-		    GIT_DIR="$repo_dir" git push --mirror $remote
+		    GIT_DIR="$repo_dir" git push -f --mirror $remote
 		fi
 	    done
 
