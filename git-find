@@ -1,0 +1,259 @@
+#!/usr/bin/env ruby
+
+# git-find, version 1.0
+#
+# by John Wiegley <johnw@newartisans.com>
+#
+# usage: git find <commit or tag>...
+#
+# Performs an exhaustive search of your object database to inform you exactly
+# how the given commit or tag fits in your repository.  It tells you all the
+# parents and children of the commit/tag, and every name it can be referenced
+# by.  It will tell you if it can be reached only by a reflog entry, or the
+# stash, or if it's descendend from a dangling commit.
+#
+# TODO: Add support for searching for blobs and trees as well.
+#
+# NOTE: This script can be very slow.
+
+class GitObject
+  attr_reader :ident
+
+  def initialize(ident)
+    @ident = ident
+  end
+end
+
+class Blob < GitObject
+  attr_reader :names
+
+  def initialize(ident)
+    super ident
+    @names = []
+  end
+
+  def add_name(name)
+    @names.push(name)
+  end
+end
+
+class Tree < GitObject
+  attr_reader :names
+
+  def initialize(ident)
+    super ident
+    @names = []
+  end
+
+  def add_name(name)
+    @names.push(name)
+  end
+end
+
+class Commit < GitObject
+  attr_reader :names
+  attr_reader :parents
+  attr_reader :children
+
+  def initialize(ident, *parents)
+    super ident
+    @names    = []
+    @parents  = parents
+    @children = []
+  end
+
+  def add_name(name)
+    @names.push(name)
+  end
+
+  def add_parent(parent)
+    unless @parents.include?(parent)
+      @parents.push(parent)
+      parent.add_child(self)
+    end
+  end
+
+  def add_child(child)
+    unless @children.include?(child)
+      @children.push(child)
+    end
+  end
+
+  def assign_name(name)
+    if @names.include?(name)
+      return
+    end
+    add_name(name)
+
+    offset = 0
+    @parents.each do |parent|
+      if offset == 0
+        if name =~ /(.+?)~([0-9]+)$/
+          child_name = $1 + "~" + ($2.to_i + 1).to_s
+        else
+          child_name = name + "~1"
+        end
+      else
+        child_name = name + "^" + (offset + 1).to_s
+      end
+      parent.assign_name(child_name)
+      offset += 1
+    end
+  end
+end
+
+class Tag < GitObject
+  attr_reader :name
+  attr_reader :commit
+
+  def initialize(ident, name, commit)
+    super ident
+    @name = name
+    @commit = commit
+  end
+end
+
+class Ref
+  attr_reader :name
+  attr_reader :commit
+
+  def initialize(name, commit)
+    @name   = name
+    @commit = commit
+  end
+end
+
+$objects = {}
+
+# Build up a full commit history for every ref, and each reflog entry for each
+# ref.
+
+def get_ref_history(ref)
+  first_obj = true
+
+  `git rev-list --parents #{ref}`.split("\n").each do |entry|
+    commit, *parents = entry.split(' ')
+
+    if $objects.has_key?(commit)
+      obj = $objects[commit]
+    else
+      obj = Commit.new(commit)
+      $objects[commit] = obj
+    end
+
+    if first_obj and ref =~ /\/tags\//
+      id = `git rev-parse #{ref}`.chomp
+      $objects[id] = Tag.new(id, ref, obj)
+      first_obj = false
+    end
+
+    if obj.parents.size == 0
+      parents.each do |parent|
+        if $objects.has_key?(parent)
+          parent_obj = $objects[parent]
+        else
+          parent_obj = Commit.new(parent)
+          $objects[parent] = parent_obj
+        end
+        obj.add_parent(parent_obj)
+      end
+    end
+  end
+end
+
+def process_names(ref, name = nil, hash = nil)
+  # Assign symbolic names to each commit
+  if not hash
+    hash = `git rev-parse #{ref}`.chomp
+  end
+  raise "Cannot locate object #{ref} => #{hash}" if not $objects.has_key?(hash)
+  obj = $objects[hash]
+  if obj.is_a? Tag
+    obj.commit.assign_name(name ? name : ref)
+  else
+    obj.assign_name(name ? name : ref)
+  end
+end
+
+$refs = `git rev-parse --symbolic --all`.split
+$refs.push("HEAD")
+
+puts "Processing refs history ..."
+$refs.each { |ref| get_ref_history(ref) }
+$refs.each { |ref| process_names(ref) }
+
+$hashes = ARGV[0].map { |ref| `git rev-parse #{ref}`.chomp }
+
+$search_reflogs = false
+$hashes.each do |hash|
+  unless $objects.has_key?(hash)
+    $search_reflogs = true
+  end
+end
+
+if $search_reflogs
+  puts "Processing reflogs ..."
+  $refs.each do |ref| 
+    unless ref == "refs/stash"
+      # Handle each reflog entry
+      `git reflog show --abbrev=40 #{ref}`.split("\n").each do |line|
+        if line =~ /^([0-9a-f]{40}) ([^@]+@\{[0-9]+\}): /
+          hash = $1
+          unless $objects.has_key?(hash)
+            puts "  unreachable reflog #{$2}"
+            get_ref_history $2
+            process_names $2, nil, hash
+          end
+        end
+      end
+    end
+  end
+end
+
+$search_dangling = false
+$hashes.each do |hash|
+  unless $objects.has_key?(hash)
+    $search_dangling = true
+  end
+end
+
+if $search_dangling
+  puts "Finding unreachable objects ..."
+  `git fsck --full --unreachable`.split("\n").each do |item|
+    if item =~ /unreachable (blob|tag|commit|tree) ([a-f0-9]{40})/
+      puts "  " + item
+      if $1 == "blob"
+        $objects[$2] = Blob.new($2)
+      elsif $1 == "tag"
+        commit = Commit.new(`git rev-list -1 #{$2}`.chomp)
+        $objects[$2] = Tag.new($2, "<dangling>", commit)
+        get_ref_history $2
+        process_names $2, "dangling-tag-#{$2}"
+      elsif $1 == "commit"
+        get_ref_history $2
+        process_names $2, "dangling-commit-#{$2}"
+      elsif $1 == "tree"
+        $objects[$2] = Tree.new($2)
+      end
+    end
+  end
+end
+
+ARGV[0].each do |ref|
+  hash = `git rev-parse #{ref}`.chomp
+
+  object = $objects[hash]
+
+  puts ""
+  if object.is_a? Tag
+    puts "Tag #{ref} => #{hash}"
+    object = object.commit
+    puts "  commit #{object.ident}"
+  else
+    puts "Commit #{ref} => #{hash}"
+  end
+
+  object.parents.each  { |parent| puts "  parent #{parent.ident}" }
+  object.children.each { |child|  puts "   child #{child.ident}" }
+  object.names.each    { |name|   puts "    name #{name}" }
+end
