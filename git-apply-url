@@ -18,7 +18,7 @@ if [[ ! $URL ]]; then
 fi
 
 if [[ -x $(which curl) && $(curl -V | grep https) ]]; then
-  fetch="curl"
+  fetch="curl -s"
 elif [[ -x $(which wget) ]]; then
   fetch="wget -O - -q --no-check-certificate"
 else
