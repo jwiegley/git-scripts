@@ -5,7 +5,12 @@
 # be bloating your pack files.
 
 rm -fr .git/refs/original
-perl -i -ne 'print unless /refs\/original/;' .git/info/refs .git/packed-refs
+if [ -f .git/info/refs ]; then
+    perl -i -ne 'print unless /refs\/original/;' .git/info/refs
+fi
+if [ -f .git/packed-refs ]; then
+    perl -i -ne 'print unless /refs\/original/;' .git/packed-refs
+fi
 
 git reflog expire --expire=0 --all
 
