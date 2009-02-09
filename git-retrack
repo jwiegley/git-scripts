@@ -6,7 +6,9 @@
 
 branch=$(git rev-parse --symbolic-full-name HEAD | sed 's/refs\/heads\///')
 
-git remote add -f $1 "$2" || echo But that\'s perfectly OK.
+if [ -n "$2" ]; then
+    git remote add -f $1 "$2" || echo But that\'s perfectly OK.
+fi
 
 git config branch.$branch.remote "$1"
 git config branch.$branch.merge "refs/heads/${3:-$branch}"
