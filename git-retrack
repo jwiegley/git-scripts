@@ -10,5 +10,5 @@ if [ -n "$2" ]; then
     git remote add -f $1 "$2" || echo But that\'s perfectly OK.
 fi
 
-git config branch.$branch.remote "$1"
+git config branch.$branch.remote "${1:-origin}"
 git config branch.$branch.merge "refs/heads/${3:-$branch}"
