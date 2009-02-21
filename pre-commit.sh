@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ ! $(git rev-parse --symbolic-full-name HEAD) = refs/heads/master ]; then
+    exit 0
+fi
+
 # These are the locations I keep my temporary source and build trees in
 TMPDIR=$HOME/Products/ledger-pre-commit
 MIRROR=$HOME/Products/ledger-pre-commit-mirror
@@ -17,10 +21,12 @@ git diff-index --cached --name-only --diff-filter=D -z HEAD | \
 # Copy only _changed files_ from MIRROR to TMPDIR, without copying timestamps.
 # This includes copying over new files, and deleting removed ones.  This way,
 # "make check" will only rebuild what is necessary to validate the commit.
-rsync -rlpgoDO --size-only --delete \
-    --exclude-from=tools/excludes $MIRROR/ $TMPDIR/
+rsync -rlpgoDOc --delete --exclude-from=tools/excludes $MIRROR/ $TMPDIR/
 
 # Everything else happens in the temporary build tree
+if [ ! -f $TMPDIR/lib/utfcpp/source/utf8.h ]; then
+    rsync -a --delete lib/utfcpp/ $TMPDIR/lib/utfcpp/
+fi
 cd $TMPDIR
 
 # Make sure there is a current Makefile.  Regeneration of Makefile happens
@@ -28,8 +34,10 @@ cd $TMPDIR
 # everything manually.  If the user doesn't have acprep or myacprep, look for
 # other common autoconf-related script files.
 if [ ! -f Makefile -o \
-     \( -f tools/myacprep -a -f acprep -a \
-     \( tools/myacprep -nt Makefile -o acprep -nt Makefile \) \) ]
+     Makefile.am -nt Makefile -o \
+     configure.ac -nt Makefile -o \
+     \( -f acprep -a acprep -nt Makefile \) -o \
+     \( -f tools/myacprep -a tools/myacprep -nt Makefile \) ]
 then
     if [ -f tools/myacprep ]; then
 	tools/myacprep --local
