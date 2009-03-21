@@ -1,0 +1,4 @@
+#!/bin/sh
+
+branch_name=$1
+git checkout --track -b ${branch_name} origin/${branch_name}
