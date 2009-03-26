@@ -18,7 +18,7 @@ fi
 
 if test -z $1
 then
-	from=svn
+	from=svn/trunk
 else
 	from=$1
 fi
@@ -30,7 +30,7 @@ else
 	to=$2
 fi
 
-file_name=$from-$to---$date
+file_name=`echo $from | sed 's/\//_/g'`--`echo $to | sed 's/\//_/g'`---$date
 file=$where/$file_name
 last=$where/last
 
@@ -42,7 +42,7 @@ echo "" >> $file
 echo "git stash list:" >> $file
 git stash list | ruby -p -e '$_.sub!(/stash\@\{0\}/){|rev| "#{rev.chomp}:#{`git rev-parse #{rev}`.chomp}"}' >> $file
 
-if [ -f "$last" ]; then
+if [ -L "$last" ]; then
 	rm $last
 fi
 ln -s $file_name $last
