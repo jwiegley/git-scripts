@@ -1,0 +1,54 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+$name = "git merge-to-svn" 
+
+def usage retcode=0
+  puts <<USAGE
+usage: #{$name} [options] <ref>
+USAGE
+  exit retcode
+end
+
+def die msg, usage=false
+  $stderr.puts msg
+  usage ? usage(-1) : exit(-1)
+end
+
+def git_dir
+  $git_dir ||= %x(git rev-parse --git-dir).sub(/\n$/,'')
+end
+
+def rev_list ref
+  %x(git rev-list --reverse --first-parent #{ref}).split(/\n/)
+end
+
+def merge_to_svn ref, opts={}
+  hashes = rev_list ref
+  hashes.each do |hash|
+    %x(git merge -q --squash #{hash} && git commit -C #{hash})
+  end
+end
+
+
+ref  = nil
+opts = {}
+args = ARGV.dup
+while arg = args.shift
+  case arg
+  when /-h|--help/
+    usage
+  when /^-/
+    die "unknow option #{arg}", true
+  else
+    case
+    when ref
+      usage -1
+    else
+      ref = arg
+    end
+  end
+end
+usage -1 unless ref
+merge_to_svn ref, opts
