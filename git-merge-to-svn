@@ -24,10 +24,23 @@ def rev_list ref
   %x(git rev-list --reverse --first-parent #{ref}).split(/\n/)
 end
 
+def patch_id hash
+  id = %x(git show #{hash} | git patch-id).sub(/\n$/,'')
+  id.empty? ? nil : id
+end
+
+def merge? hash
+  patch_id.nil?
+end
+
 def merge_to_svn ref, opts={}
   hashes = rev_list ref
   hashes.each do |hash|
-    %x(git merge -q --squash #{hash} && git commit -C #{hash})
+    if merge? hash
+      %x(git merge -q --squash #{hash} && git commit -C #{hash})
+    else
+      %x(git cherry-pick #{hash})
+    end
   end
 end
 
