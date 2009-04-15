@@ -175,7 +175,7 @@ def interactive_edit ref, revs, squash, opts={}
 USAGE
       end
     end
-    system git_editor, filename
+    system git_editor, filename if opts[:interactive]
     res = []
     File.open(filename) do |file|
       file.each_line do |line|
@@ -223,12 +223,12 @@ def flatten ref, refs, opts={}
   squash = opts[:squash] || []
   orig = parse_flatten ref, :read => true
   target = rev_list ref, 
-                    "^#{git_branch}", 
-                    "^#{orig}", 
+                    "^#{git_branch}", "^#{orig}", 
                     *[refs, squash.map{|s| "^#{s}"}].flatten
   stored_last = store_last
   last = stored_last
-  revs = interactive_edit orig, target, squash
+  revs = interactive_edit orig, target, squash,
+         :interactive => opts[:interactive]
   revs.each do |action, abbrev, str|
     hash = ref_to_hash abbrev
     if stored_last
@@ -274,6 +274,8 @@ while arg = args.shift
   case arg
   when /-h|--help/
     usage
+  when /-i|--interactive/
+    opts[:interactive] = true
   when /-s|--squash/
     opts[:squash] ||= []
     opts[:squash] << (arg =~ /=/ ? arg.sub(/.*=\s*/,'') : args.shift )
