@@ -133,34 +133,37 @@ end
 
 
 def interactive_edit ref, revs, squash, opts={}
-  name = "FLATTEN"
+  name = "FLATTEN_MSG"
   filename = "#{git_dir}/#{name}"
   limit = opts[:limit] || 70
   if opts[:delete]
     File.safe_unlink filename
   else
-    return [] if revs.empty?
-    unless File.exists? filename
-      File.open(filename, "w+") do |file|
-        str_HEAD = hash_to_str(ref)[0]
-        str_revs  = revs.map do |rev|
-          hash, str = hash_to_str(rev)
-          str = str[0..(limit-3)] + '...' if str.length > limit
-          [hash, str]
-        end
-        str_revs.each do |hash, str|
-          if merge? hash
-            if (parent_branches(hash) & squash).empty?
-              action = :squash
+    if !opts[:continue]
+      return [] if revs.empty?
+      unless File.exists? filename
+        File.open(filename, "w+") do |file|
+          str_HEAD = hash_to_str(ref)[0]
+          str_revs  = revs.map do |rev|
+            hash, str = hash_to_str(rev)
+            str = str[0..(limit-3)] + '...' if str.length > limit
+            [hash, str]
+          end
+          str_revs.each do |hash, str|
+            if merge? hash
+              if (parent_branches(hash) & squash).empty?
+                action = :squash
+              else
+                # merge from a squashed branch
+                # so it may be picked
+                action = :pick
+              end
             else
               action = :pick
             end
-          else
-            action = :pick
+            res = "%-6s %s %s" % [action, hash, str]
+            file.puts res
           end
-          res = "%-6s %s %s" % [action, hash, str]
-          file.puts res
-        end
         file.puts <<USAGE
 # Flatten #{str_HEAD}..#{str_revs.last[0]} onto #{str_HEAD}
 #
@@ -173,21 +176,25 @@ def interactive_edit ref, revs, squash, opts={}
 # However, if you remove everything, the rebase will be aborted.
 #
 USAGE
+        end
       end
     end
     system git_editor, filename if opts[:interactive]
     res = []
     File.open(filename) do |file|
       file.each_line do |line|
-        res << line.sub(/\n$/,'').split(/\s+/) unless line =~ /^#/
+        unless line =~ /^#/
+        line = line.sub(/\n$/,'').split(/\s+/)
+        res << [ line[0], line[1], line[2..-1].join(' ') ]
+        end
       end
     end
     res
   end
 end
 
-def store_last last=nil, opts={}
-  name = "FLATTEN_LAST"
+def store_temp last=nil, opts={}
+  name = "FLATTEN_TMP"
   filename = "#{git_dir}/#{name}"
   if opts[:delete]
     File.safe_unlink filename
@@ -220,48 +227,69 @@ def parse_action action
 end
 
 def flatten ref, refs, opts={}
-  squash = opts[:squash] || []
-  orig = parse_flatten ref, :read => true
-  target = rev_list ref, 
-                    "^#{git_branch}", "^#{orig}", 
-                    *[refs, squash.map{|s| "^#{s}"}].flatten
-  stored_last = store_last
-  last = stored_last
-  revs = interactive_edit orig, target, squash,
-         :interactive => opts[:interactive]
-  revs.each do |action, abbrev, str|
-    hash = ref_to_hash abbrev
-    if stored_last
-      puts "#{stored_last} / #{hash}"
-      stored_last = nil if hash == stored_last
-      next
-    end
-    action = parse_action action
-    if action == :squash
-      parse_flatten ref, :write => hash
-      next
-    end
-    result = execute( "git merge -q --squash #{hash}",
-                      :verbose => true,
-                      :return => :result )
-    die "" unless result
-    parse_flatten ref, :write => hash
-    store_last hash
-    if action == :edit
-      die "ok, you can edit it"
+  if !opts[:abort]
+    resolv_msg = <<RESOLV
+
+When you have resolved this problem run "git flatten --continue".
+If you would prefer to skip this patch, instead run "git flatten --skip".
+To restore the original branch and stop flatten run "git flatten --abort".
+RESOLV
+    stored_last = store_temp
+    if opts[:continue] || opts[:skip]
+      die "No flatten in progress?" unless stored_last
+      opts[:interactive] = true
     else
-      result = execute( "git commit -C #{hash}",
-                        :verbose => true,
-                        :return => :result)
-      die "" unless result
+      die "A flatten is in progress, try --continue, --skip or --abort." if stored_last
+      squash = opts[:squash] || []
+      orig = parse_flatten ref, :read => true
+      target = rev_list ref, 
+                        "^#{git_branch}", "^#{orig}", 
+                        *[refs, squash.map{|s| "^#{s}"}].flatten
+    end
+    last = stored_last
+    revs = interactive_edit orig, target, squash,
+            :interactive => opts[:interactive],
+            :continue => opts[:continue]||opts[:skip]
+    revs.each do |action, abbrev, str|
+      hash = ref_to_hash abbrev
+      if stored_last
+        if hash != stored_last
+          puts "Skipping #{abbrev} #{str}"
+          next
+        end
+      end
+      action = parse_action action
+      store_temp hash
+      if action == :squash
+        puts "Squashing #{abbrev} #{str}"
+        parse_flatten ref, :write => hash
+        next
+      end
+      if !stored_last
+        result = execute( "git merge -q --squash #{hash}",
+                          :verbose => true,
+                          :return => :result )
+        die resolv_msg unless result
+        die "ok, you can edit it" if action == :edit
+      end
+      if !stored_last || !opts[:skip]
+        result = execute( "git commit -C #{hash}",
+                          :verbose => true,
+                          :return => :result)
+        die resolv_msg unless result
+      else
+        puts "Skipping #{abbrev} #{str}"
+      end
+      stored_last = nil
+      parse_flatten ref, :write => hash
+    end
+    if last
+      parse_flatten ref, :write => last
+    else
+      puts "nothing to do"
     end
   end
-  if last
-    parse_flatten ref, :write => last
-  else
-    puts "nothing to do"
-  end
-  store_last nil, :delete => true
+  store_temp nil, :delete => true
   interactive_edit nil, nil, nil, :delete => true
 end
 
@@ -272,10 +300,19 @@ opts = {}
 args = ARGV.dup
 while arg = args.shift
   case arg
+  when /--abort/
+    opts[:abort] = true
+    ref = :osef
+  when /--continue/
+    opts[:continue] = true
+    ref = :osef
   when /-h|--help/
     usage
   when /-i|--interactive/
     opts[:interactive] = true
+  when /--skip/
+    opts[:skip] = true
+    ref = :osef
   when /-s|--squash/
     opts[:squash] ||= []
     opts[:squash] << (arg =~ /=/ ? arg.sub(/.*=\s*/,'') : args.shift )
