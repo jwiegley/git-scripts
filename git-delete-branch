@@ -1,0 +1,5 @@
+#!/bin/sh
+# remove remote git branch
+
+git branch -D $1
+git push origin :$1
