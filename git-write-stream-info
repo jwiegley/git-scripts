@@ -1,0 +1,48 @@
+#!/bin/sh
+
+. git-sh-setup
+
+git_branch()
+{
+	git branch | grep '*' | sed 's/..//'
+}
+
+date=$(date +%Y-%m-%d--%H-%M)
+
+where=$GIT_DIR/streams
+
+if test ! -d $where
+then
+	mkdir $where
+fi
+
+if test -z $1
+then
+	from=svn/trunk
+else
+	from=$1
+fi
+
+if test -z $2
+then
+	to=$(git_branch)
+else
+	to=$2
+fi
+
+file_name=`echo $from | sed 's/\//_/g'`--`echo $to | sed 's/\//_/g'`---$date
+file=$where/$file_name
+last=$where/last
+
+echo "git log $from^..$to:" > $file
+git log --name-status --decorate --color $from^..$to >> $file
+echo "" >> $file
+echo "---" >> $file
+echo "" >> $file
+echo "git stash list:" >> $file
+git stash list | ruby -p -e '$_.sub!(/stash\@\{0\}/){|rev| "#{rev.chomp}:#{`git rev-parse #{rev}`.chomp}"}' >> $file
+
+if [ -L "$last" ]; then
+	rm $last
+fi
+ln -s $file_name $last

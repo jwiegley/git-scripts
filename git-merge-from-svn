@@ -1,0 +1,114 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+$name = "git merge-from-svn" 
+
+def usage retcode=0
+  puts <<USAGE
+usage: #{$name} [options] <ref>
+  -b <name>, --branch_name=<name> select the svn branch name
+  -e, --edit                      edit the message before commit
+  -l, --log                       show log in message (as in git merge)
+  -m <msg>, --message=<msg>       change default message
+USAGE
+  exit retcode
+end
+
+def die msg, usage=false
+  $stderr.puts msg
+  usage ? usage(-1) : exit(-1)
+end
+
+def git_dir
+  $git_dir ||= %x(git rev-parse --git-dir).sub(/\n$/,'')
+end
+
+def ref_to_hash ref
+  %x(git rev-parse #{ref}).sub(/\n$/,'')
+end
+
+def hash_to_rev hash
+  %x(git svn find-rev #{hash}).sub(/\n$/,'')
+end
+
+def ref_to_rev rev
+  hash_to_rev( ref_to_hash(rev) )
+end
+
+def merge_from_svn ref, opts={}
+  hash = ref_to_hash ref
+  rev  = hash_to_rev hash
+  branch_name = opts[:branch_name]
+  message = opts[:message]
+  unless branch_name
+    if ref =~ /svn\//
+      branch_name = ref.sub(/svn\//,'')
+    else
+      die %(can't find branch name)
+    end
+  end
+  puts "#{ref} #{hash} #{rev} #{branch_name}"
+  %x(git merge --no-commit --no-ff #{opts[:log] ? '--log' : ''} #{hash})
+
+  old_msg_name = "#{git_dir}/MERGE_MSG"
+  new_msg_name = "#{git_dir}/MERGE_MSG_tmp"
+
+  File.open new_msg_name, "w" do |new_msg|
+    first = true
+    File.open old_msg_name do |old_msg|
+      old_msg.each_line do |line|
+        if first
+          if message
+            new_msg.puts message
+          else
+            new_msg.puts "Merge #{branch_name} (#{rev})"
+          end
+          first = false
+        else
+          new_msg.puts line.sub(/commit '#{hash}'/, branch_name)
+        end
+      end
+    end
+  end
+  FileUtils.mv new_msg_name, old_msg_name
+  %x(git commit #{opts[:edit_message] ? '' : "-F #{old_msg_name}"})
+end
+
+
+ref = nil
+opts = {}
+args = ARGV.dup
+while arg = args.shift
+  case arg
+  when /-h|--help/
+    usage
+  when /-b|--branch-name/
+    if arg =~ /=/
+      opts[:branch_name] = arg.sub(/.*=\s*/,'')
+    else
+      opts[:branch_name] = args.shift
+    end
+  when /-e|--edit-message/
+    opts[:edit] = true
+  when /-l|--log/
+    opts[:log] = true
+  when /-m|--message/
+    if arg =~ /=/
+      opts[:message] = arg.sub(/.*=\s*/,'')
+    else
+      opts[:message] = args.shift
+    end
+  when /^-/
+    die "unknow option #{arg}", true
+  else
+    case
+    when ref
+      usage -1
+    else
+      ref = arg
+    end
+  end
+end
+usage -1 unless ref
+merge_from_svn ref, opts
