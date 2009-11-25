@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Assumes you have done:
+#
+#    git remote add backup your-other-host:r/home.git
+
+git push backup

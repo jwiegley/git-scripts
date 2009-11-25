@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ $# != 2 ]; then
+  echo "save-file FILE MSG" >&2
+  exit 1
+fi
+
+FILE="$1"
+MSG="$2"
+
+git add -f "$FILE"
+git commit -m "$MSG"
