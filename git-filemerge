@@ -1,0 +1,26 @@
+#!/bin/sh
+if test $# = 0; then
+OLD=`git write-tree`
+elif test "$1" = --cached; then
+OLD=HEAD
+  NEW=`git write-tree`
+  shift
+fi
+if test $# -gt 0; then
+OLD="$1"; shift
+fi
+test $# -gt 0 && test -z "$CACHED" && NEW="$1"
+TMPDIR1=`mktemp -d`
+git archive --format=tar $OLD | (cd $TMPDIR1; tar xf -)
+if test -z "$NEW"; then
+TMPDIR2=$(git rev-parse --show-cdup)
+test -z "$cdup" && TMPDIR2=.
+else
+TMPDIR2=`mktemp -d`
+  git archive --format=tar $NEW | (cd $TMPDIR2; tar xf -)
+fi
+
+opendiff $TMPDIR1 $TMPDIR2 | cat
+rm -rf $TMPDIR1
+test ! -z "$NEW" && rm -rf $TMPDIR2
+

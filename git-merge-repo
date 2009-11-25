@@ -1,0 +1,21 @@
+#!/bin/sh
+# merge one repo with another
+# http://www.kernel.org/pub/software/scm/git/docs/howto/using-merge-subtree.html
+
+# Check arguments
+if [ $# -ne 2 ]; then
+    echo 1>&2 Usage: 
+	echo 1>&2 "  cd bigrepo"
+	echo 1>&2 "  $0 repo /path/to/repo"
+    exit 127
+fi
+
+REPO=$1
+DIR=$2
+
+git remote add -f $REPO $DIR
+git merge -s ours --no-commit $REPO/master
+git read-tree --prefix=$REPO/ -u $REPO/master
+git commit -m "Merge $REPO as our subdirectory"
+
+git pull -s subtree $REPO master
