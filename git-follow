@@ -1,0 +1,5 @@
+#!/bin/sh
+
+CURRENT=$(basename $(pwd))
+
+git remote add -t master -f $1 git://github.com/$1/$CURRENT.git

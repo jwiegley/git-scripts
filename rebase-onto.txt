@@ -1,0 +1,64 @@
+Master branch, with two interdependent development branches:
+
+  o--o--o--o master
+            \
+             \
+              o--o--o--o foo
+                        \
+                         \
+                          o--o--o--o bar
+
+Let's say master gets a few commits:
+
+  o--o--o--o--o--o--o master
+            \
+             \
+              o--o--o--o foo
+                        \
+                         \
+                          o--o--o--o bar
+
+And now we go to foo and use "git rebase master":
+
+                       o--o--o--o foo
+                      /
+                     /
+  o--o--o--o--o--o--o master
+            \
+             \
+              o--o--o--o (fec1d4)
+                        \
+                         \
+                          o--o--o--o bar
+
+foo, as its known by name, is no longer part of the history of bar.  Instead,
+bar begins with four commits that *used to be known as foo*, but now have no
+name.  I've given the old foo a commit id, just for the purpose of this
+description.
+
+Question is: how do I get bar onto the new foo, so everything looks like the
+first picture?  Answer: rebase --onto:
+
+  git rebase --onto foo fec1d4 bar
+
+Now I have:
+
+                                   o--o--o--o bar
+                                  /
+                                 /
+                       o--o--o--o foo
+                      /
+                     /
+  o--o--o--o--o--o--o master
+            \
+             \
+              o--o--o--o (fec1d4)
+                        \
+                         \
+                          o--o--o--o (a661bd) DANGLING
+
+Note that (fec1d4) didn't itself get rebased, but everything after it until
+bar did, onto foo.
+
+You can also manage this sort of situation mostly automatically using topgit
+(http://repo.or.cz/w/topgit.git).

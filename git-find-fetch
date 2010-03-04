@@ -38,6 +38,11 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
     do
 	if [[ -f "$repo_dir"/config ]]
 	then
+	    if [[ -f "$repo_dir"/../fetch.sh ]]; then
+		(cd "$repo_dir"/..; sh fetch.sh)
+		continue
+	    fi
+
 	    if [[ $mirror_only == false ]]; then
 		# If this is a git-svn repo, use git svn fetch
 		if grep -q '^\[svn-remote ' "$repo_dir"/config
@@ -68,6 +73,23 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
 		GIT_DIR="$repo_dir" git fsck --full && \
 		    GIT_DIR="$repo_dir" git repack -a -d -f --window=200 --depth=50 && \
 		    GIT_DIR="$repo_dir" git prune
+	    fi
+
+	    HG_DIR="$repo_dir"/../.git-hg
+	    FAST_EXPORT=$HOME/Archives/Git/Sources/fast-export/hg-fast-export.sh
+	    if [[ -d "$HG_DIR" ]]; then
+		(cd "$HG_DIR"; hg pull && hg update)
+		(cd "$repo_dir"/..; sh $FAST_EXPORT -r .git-hg)
+		git push
+	    fi
+
+	    DARCS_DIR="$repo_dir"/../.git-darcs
+	    GIT_DARCS_IMPORT=$HOME/bin/git-darcs-import
+	    if [[ -d "$DARCS_DIR" ]]; then
+		(cd "$DARCS_DIR"; darcs pull)
+		(cd "$repo_dir"/..; $GIT_DARCS_IMPORT .git-darcs)
+		git rebase git-darcs-import
+		git push origin master
 	    fi
 	fi
     done

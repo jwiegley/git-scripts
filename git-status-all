@@ -1,0 +1,6 @@
+#!/bin/sh
+
+find . -name .git -type d | \
+while read path; do \
+(cd "$path/.."; echo $(dirname "$path") ; git status); \
+done
