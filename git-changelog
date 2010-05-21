@@ -20,14 +20,21 @@ p = Popen("git log --stat %s" % string.join(sys.argv[1:], " "),
 
 line = p.readline()
 while line:
-    match = re.match("commit ([0-9a-f]+)", line)
+    match = None
+    while line and not match:
+        match = re.match("commit ([0-9a-f]+)", line)
+        if not match:
+            line = p.readline()
     assert match
+
     hash_id = match.group(1)
 
-    line = p.readline()
-
-    match = re.match("Author: (.+)", line)
+    match = None
+    while line and not match:
+        line = p.readline()
+        match = re.match("Author: (.+)", line)
     assert match
+
     author = match.group(1)
     author = re.sub(" <", "  <", author)
 
@@ -71,8 +78,10 @@ while line:
 
     del fp
 
-    print "%s  %s\n\n%s\t* commit %s\n" % \
-        (date.strftime("%Y-%m-%d"), author, log_text, hash_id)
+    print "%s  %s\n\n%s" % \
+        (date.strftime("%Y-%m-%d"), author, log_text),
+    #print "%s  %s\n\n%s\t* commit %s\n" % \
+    #    (date.strftime("%Y-%m-%d"), author, log_text, hash_id)
 
     line = p.readline()
 
