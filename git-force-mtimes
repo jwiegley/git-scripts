@@ -1,0 +1,20 @@
+#!/usr/bin/perl
+# Sets mtimes of all files in the reprository their last change date
+# based on git's log. Useful to avoid too new dates after a
+# checkout.
+
+my %seen;
+my $date;
+open(LOG, "git log --pretty=format:'date: %ct' --name-only |") || die "git log failed: $!";
+while (<LOG>) {
+	chomp;
+	if (/^date: (\d+)$/) {
+		$date=$1;
+	}
+	elsif (! /^$/ && ! $seen{$_}) {
+		$seen{$_}=1;
+		# git log can list deleted files, so error is ignored
+		utime($date, $date, $_);
+	}
+}
+close LOG || die "git log failed: $!";
