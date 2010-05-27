@@ -2,76 +2,47 @@
 
 # git-changelog
 #
-# version 1.0, by John Wiegley
+# version 2.0, by John Wiegley
 #
 # The purpose of this code is to turn "git log" output into a complete
 # ChangeLog, for projects who wish to begin using a ChangeLog, but haven't
 # been.
+#
+# This version of git-changelog depends on GitPython:
+#   git://gitorious.org/git-python/mainline.git
 
-import datetime
+import time
 import string
 import sys
 import re
+import os
 
+from git import *               # GitPython
 from subprocess import *
 
-p = Popen("git log --stat %s" % string.join(sys.argv[1:], " "),
-          shell = True, stdout = PIPE).stdout
+repo = Repo(os.getcwd())
+path = sys.argv[1] if len(sys.argv) == 2 else ''
 
-line = p.readline()
-while line:
-    match = None
-    while line and not match:
-        match = re.match("commit ([0-9a-f]+)", line)
-        if not match:
-            line = p.readline()
-    assert match
+for commit in repo.iter_commits('origin/master..', paths=path):
+    hash_id  = commit.sha
+    author   = commit.author
+    date     = commit.committed_date
+    log_text = commit.message.split('\n')[0]
 
-    hash_id = match.group(1)
+    log_text_remainder = commit.message.split('\n\n')[1:]
+    while len(log_text_remainder) > 0 and not log_text_remainder[0]:
+        log_text_remainder = log_text_remainder[1:]
+    log_text_remainder = string.join(log_text_remainder, '\n\t')
+    if log_text_remainder:
+        log_text_remainder = '\n\t' + log_text_remainder
 
-    match = None
-    while line and not match:
-        line = p.readline()
-        match = re.match("Author: (.+)", line)
-    assert match
-
-    author = match.group(1)
-    author = re.sub(" <", "  <", author)
-
-    line = p.readline()
-
-    match = re.match("Date: +(.+?) [-+][0-9]{4}", line)
-    assert match
-    # Tue Sep 30 05:43:49 2003 +0000
-    date = datetime.datetime.strptime(match.group(1), '%a %b %d %H:%M:%S %Y')
-
-    line = p.readline()         # absorb separator
-    line = p.readline()
-
-    log_text = ""
-    log_text_remainder = ""
-
-    while line and line != '\n':
-        if not log_text:
-            log_text += line[4:]
-        else:
-            log_text_remainder += "\t" + line[4:]
-
-        line = p.readline()
-
-    line = p.readline()
-
-    if not re.match("commit", line):
-        files = []
-        while line and line != '\n':
-            match = re.match(" (.+?) +\\|", line)
-            if match:
-                files.append(match.group(1))
-                line = p.readline()
-            else:
-                break
-
-        line = p.readline()
+    diff = commit.diff(commit.parents[0])
+    files = []
+    for f in diff:
+        p = f.a_blob.path or f.b_blob.path
+        p2 = re.sub('^' + path + '/', '', p)
+        if p != p2:
+            files.append(p2)
 
     fp = Popen(["fmt", "-72"], shell = True, stdin = PIPE, stdout = PIPE)
     fp.stdin.write("\t* %s: %s" % (string.join(files, ",\n\t"), log_text))
@@ -79,12 +50,8 @@ while line:
     log_text = fp.stdout.read()
     del fp
 
-    print "%s  %s\n\n%s%s" % \
-        (date.strftime("%Y-%m-%d"), author, log_text, log_text_remainder)
-    #print "%s  %s\n\n%s\t* commit %s\n" % \
-    #    (date.strftime("%Y-%m-%d"), author, log_text, hash_id)
-
-    if not re.match("commit", line):
-        line = p.readline()
+    print "%s  %s  <%s>\n\n%s%s" % \
+        (time.strftime("%Y-%m-%d", time.gmtime(date)),
+         author.name, author.email, log_text, log_text_remainder)
 
 # git-changelog ends here
