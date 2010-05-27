@@ -21,9 +21,22 @@ from git import *               # GitPython
 from subprocess import *
 
 repo = Repo(os.getcwd())
-path = sys.argv[1] if len(sys.argv) == 2 else ''
+ref  = 'origin/master..'
+path = ''
 
-for commit in repo.iter_commits('origin/master..', paths=path):
+# Usage: git changelog [COMMITISH] [-- [PATH]]
+
+saw_dashdash = False
+if len(sys.argv) > 1:
+    for arg in sys.argv[1:]:
+        if arg == "--":
+            saw_dashdash = True
+        elif saw_dashdash:
+            path = arg
+        else:
+            ref = arg
+
+for commit in repo.iter_commits(ref, paths=path):
     hash_id  = commit.sha
     author   = commit.author
     date     = commit.committed_date
