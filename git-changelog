@@ -49,40 +49,42 @@ while line:
     line = p.readline()
 
     log_text = ""
+    log_text_remainder = ""
+
     while line and line != '\n':
         if not log_text:
             log_text += line[4:]
         else:
-            log_text += "\t" + line[4:]
+            log_text_remainder += "\t" + line[4:]
 
         line = p.readline()
 
     line = p.readline()
 
-    files = []
-    while line and line != '\n':
-        match = re.match(" (.+?) +\\|", line)
-        if match:
-            files.append(match.group(1))
-            line = p.readline()
-        else:
-            break
+    if not re.match("commit", line):
+        files = []
+        while line and line != '\n':
+            match = re.match(" (.+?) +\\|", line)
+            if match:
+                files.append(match.group(1))
+                line = p.readline()
+            else:
+                break
 
-    line = p.readline()
+        line = p.readline()
 
-    fp = Popen("fmt", shell = True, stdin = PIPE, stdout = PIPE)
-
-    fp.stdin.write("\t* %s: %s\n" % (string.join(files, ",\n\t"), log_text))
+    fp = Popen(["fmt", "-72"], shell = True, stdin = PIPE, stdout = PIPE)
+    fp.stdin.write("\t* %s: %s" % (string.join(files, ",\n\t"), log_text))
     fp.stdin.close()
     log_text = fp.stdout.read()
-
     del fp
 
-    print "%s  %s\n\n%s" % \
-        (date.strftime("%Y-%m-%d"), author, log_text),
+    print "%s  %s\n\n%s%s" % \
+        (date.strftime("%Y-%m-%d"), author, log_text, log_text_remainder)
     #print "%s  %s\n\n%s\t* commit %s\n" % \
     #    (date.strftime("%Y-%m-%d"), author, log_text, hash_id)
 
-    line = p.readline()
+    if not re.match("commit", line):
+        line = p.readline()
 
 # git-changelog ends here
