@@ -1,0 +1,19 @@
+#!/bin/sh
+
+COMPRESSION="gz"
+
+if [ $# -ne 1 ]; then
+    echo "usage: git-tarball <tag|commit>" >&2
+    exit 1
+fi
+
+name="$(basename $(readlink -f .))"
+tag="$1"
+
+echo "Creating archive for '$name' => '$name-$tag.tar.$COMPRESSION'"
+
+if [ "$COMPRESSION" = "gz" ]; then
+    git archive --prefix="$name-$tag/" "$tag" | gzip --best > $name-$tag.tar.gz
+elif [ "$COMPRESSION" = "bz2" ]; then
+    git archive --prefix="$name-$tag/" "$tag" | bzip2 --best > $name-$tag.tar.bz2
+fi
