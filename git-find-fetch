@@ -47,8 +47,10 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
 		# If this is a git-svn repo, use git svn fetch
 		if grep -q '^\[svn-remote ' "$repo_dir"/config
 		then
-		    echo git svn fetch: $repo_dir
-		    GIT_DIR="$repo_dir" git svn fetch
+                    if [[ -d "$repo_dir"/svn ]]; then
+		        echo git svn fetch: $repo_dir
+		        GIT_DIR="$repo_dir" git svn fetch
+                    fi
 
 		# If this is a gc-utils repo, use gc-utils update
 		elif grep -q '^\[gc-utils\]' "$repo_dir"/config
@@ -76,20 +78,26 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
 	    fi
 
 	    HG_DIR="$repo_dir"/../.git-hg
-	    FAST_EXPORT=$HOME/Archives/Git/Sources/fast-export/hg-fast-export.sh
+	    FAST_EXPORT=$HOME/src/fast-export/hg-fast-export.sh
 	    if [[ -d "$HG_DIR" ]]; then
 		(cd "$HG_DIR"; hg pull && hg update)
-		(cd "$repo_dir"/..; sh $FAST_EXPORT -r .git-hg)
-		git push
+		(cd "$repo_dir"/..; PYTHON=python2.6 sh $FAST_EXPORT -r .git-hg)
+		(cd "$repo_dir"; git push)
+	    fi
+
+	    BZR_DIR="$repo_dir"/../.git/bzr-git
+	    if [[ -d "$BZR_DIR" ]]; then
+		(cd "$repo_dir"/..; git bzr fetch origin)
+		(cd "$repo_dir"; git push)
 	    fi
 
 	    DARCS_DIR="$repo_dir"/../.git-darcs
 	    GIT_DARCS_IMPORT=$HOME/bin/git-darcs-import
-	    if [[ -d "$DARCS_DIR" ]]; then
+	    if [[ -d "$DARCS_DIR" && -f "$GIT_DARCS_IMPORT" ]]; then
 		(cd "$DARCS_DIR"; darcs pull)
 		(cd "$repo_dir"/..; $GIT_DARCS_IMPORT .git-darcs)
-		git rebase git-darcs-import
-		git push origin master
+		(cd "$repo_dir"; git rebase git-darcs-import)
+		(cd "$repo_dir"; git push origin master)
 	    fi
 	fi
     done
