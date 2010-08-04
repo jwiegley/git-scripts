@@ -5,7 +5,8 @@
 
 # Note that there are some special cases, like a branch here may
 # have a different name on the remote.  This script is not aware of
-# stuff like that.
+# stuff like that.  Also, `git status` will not detect if the local
+# repo is ahead of an svn repo (using git svn)
 
 # written by Dieter Plaetinck
 
