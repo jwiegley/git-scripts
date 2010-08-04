@@ -1,0 +1,8 @@
+#!/bin/bash
+depth={1:-all} # 'all' or number of depth
+
+for i in $(git fsck --unreachable | egrep 'tree|commit' | cut -d\  -f3)
+do
+	echo -n "U:$i CM:"
+	git-closest-match $i num $depth
+done
