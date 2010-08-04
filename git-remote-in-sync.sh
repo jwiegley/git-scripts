@@ -50,7 +50,7 @@ fi
 if [ `git stash list | wc -l` -gt 0 ];
 then
 	echo "***** Dirty stash: *****"
-	git stash list
+	GIT_PAGER= git stash list
 	ret=1
 fi
 
