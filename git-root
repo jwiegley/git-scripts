@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# inspired by http://stackoverflow.com/questions/957928/is-there-a-way-to-get-to-the-git-root-directory-in-one-command/3009378#3009378
+if [ -n "$1" ]
+then
+	if [ -d "$1" ]
+	then
+		cd $1
+	else
+		cd `dirname $1`
+	fi
+fi
+cdup=$(git rev-parse --show-cdup)
+exec readlink -f ./$cdup
