@@ -37,7 +37,6 @@ if len(sys.argv) > 1:
             ref = arg
 
 for commit in repo.iter_commits(ref, paths=path):
-    hash_id  = commit.sha
     author   = commit.author
     date     = commit.committed_date
     log_text = commit.message.split('\n')[0]
