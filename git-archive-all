@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Super basic tool to export repo and all submodules
+# as a single zip file
+
+# USAGE: git archive-all foo
+# generates foo.zip
+
+OUTFILE=$1
+
+git ls-files --cached --full-name --no-empty-directory -z \
+   | xargs -0 zip "$OUTFILE.zip" > /dev/null
+
+git submodule --quiet foreach --recursive \
+   'perl -e "
+      print join qq(\0),
+        map qq($path/\$_),
+        split /\0/,
+        qx(git ls-files -z --cached --full-name --no-empty-directory);
+      print qq(\0)"
+    ' | xargs -0 zip "$OUTFILE.zip" > /dev/null
+
