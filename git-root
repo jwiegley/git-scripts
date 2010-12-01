@@ -1,5 +1,7 @@
 #!/bin/sh -e
 # inspired by http://stackoverflow.com/questions/957928/is-there-a-way-to-get-to-the-git-root-directory-in-one-command/3009378#3009378
+# gives absolute path to git repository root, either for cwd, or directory (or files' dirname) given as $1
+# when not a git repository, exit >0
 if [ -n "$1" ]
 then
 	if [ -d "$1" ]
@@ -9,5 +11,4 @@ then
 		cd `dirname $1`
 	fi
 fi
-cdup=$(git rev-parse --show-cdup)
-exec readlink -f ./$cdup
+exec git rev-parse --show-toplevel
