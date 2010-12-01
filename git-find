@@ -193,7 +193,7 @@ end
 
 if $search_reflogs
   puts "Processing reflogs ..."
-  $refs.each do |ref| 
+  $refs.each do |ref|
     unless ref == "refs/stash"
       # Handle each reflog entry
       `git reflog show --abbrev=40 #{ref}`.split("\n").each do |line|
