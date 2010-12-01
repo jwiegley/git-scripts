@@ -38,15 +38,37 @@ fi
 
 for remote in $list;
 do
-	# check commits and branches
-	out=`git push --all -n $remote 2>&1`
-	if [ "$out" != 'Everything up-to-date' ];
+	# Check commits and branches
+	# An approach where you `git push --all -n $remote 2>&1` and check whether the result is
+	# 'Everything up-to-date' can (and often will) yield
+	# "To prevent you from losing history, non-fast-forward updates were rejected"
+	# Since such an approach does traffic with the remote anyway, I choose to fetch the origin
+	# and inspect it's branches.  This is a bit inefficient network-wise, but couldn't see a better solution
+	if ! git fetch $remote
 	then
-		echo -e "***** Dirty commits/branches: *****\n$out" >&2
+		echo "could not git fetch $remote" >&2
 		ret=1
 	fi
+	IFS_BACKUP=$IFS
+	IFS=$'\n'
+	for branch in `git branch`
+	do
+		branch=${branch/\*/};
+		branch_local=${branch// /}; # git branch prefixes branches with spaces. and spaces in branchnames are illegal.
+		if ! git branch -r --contains $branch_local 2>/dev/null | grep -q "^  $remote/"
+		then
+			echo "Branch $branch_local is not contained within remote $remote!" >&2
+			ret=1
+		fi
+		if ! git branch -r | grep -q "^  $remote/$branch_local"
+		then
+			echo "Branch $branch_local exists, but not $remote/$branch_local" >&2
+			ret=1
+		fi
+	done
+	IFS=$IFS_BACKUP
 
-	# check tags
+	# Check tags
 	out=`git push --tags -n $remote 2>&1`
 	if [ "$out" != 'Everything up-to-date' ];
 	then
@@ -55,21 +77,25 @@ do
 	fi
 done
 
-# added/deleted/modified files in the currently checked out branch or index.
-# this should do I think. (other branch, esp remote tracking branch should not be checked, right? maybe if this one is dirty..)
+# Check WC/index
 cur_branch=`git branch | grep '^\* ' | cut -d ' ' -f2`
 cur_branch=${cur_branch// /}
 exp="# On branch $cur_branch
 nothing to commit (working directory clean)"
 out=`git status`
-if [ "$out" != "$exp" ];
+if [ "$out" != "$exp" ]
 then
-	echo "***** Dirty WC or index *****" >&2
-	git status
-	ret=1
+	# usually i'd use bash regex, but this case is multiple-lines so bash regex is no go
+	out=$(echo "$out" | egrep -v "^(# On branch $cur_branch|# Your branch is behind .* commits, and can be fast-forwarded.|#|nothing to commit \(working directory clean\))$")
+	if [ -n "$out" ]
+	then
+		echo "***** Dirty WC or index *****" >&2
+		git status
+		ret=1
+	fi
 fi
 
-# stash
+# Check stash
 if [ `git stash list | wc -l` -gt 0 ];
 then
 	echo "***** Dirty stash: *****" >&2
