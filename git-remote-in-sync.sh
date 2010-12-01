@@ -28,6 +28,11 @@ then
 	fi
 fi
 
+if [ -z "$list" ]
+then
+	echo "At least one branch, but no remotes found!  The content here might be unique!" >&2
+	ret=1
+fi
 
 for remote in $list;
 do
