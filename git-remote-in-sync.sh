@@ -57,7 +57,8 @@ done
 
 # added/deleted/modified files in the currently checked out branch or index.
 # this should do I think. (other branch, esp remote tracking branch should not be checked, right? maybe if this one is dirty..)
-cur_branch=`git branch | cut -d ' ' -f2`
+cur_branch=`git branch | grep '^\* ' | cut -d ' ' -f2`
+cur_branch=${cur_branch// /}
 exp="# On branch $cur_branch
 nothing to commit (working directory clean)"
 out=`git status`
