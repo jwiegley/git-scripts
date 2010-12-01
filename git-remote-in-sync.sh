@@ -14,6 +14,21 @@ list="$@"
 [ -z "$list" ] && list=`git remote`
 ret=0
 
+if [ -z "`git branch`" ]
+then
+	if [ $(cd $(git root) && ls -Al | egrep -v "^(.git|total)" | wc -l) -gt 0 ]
+	then
+		echo "This repo doesn't contain any branch, but contains a bunch of files!" >&2
+		ls -Alh $(git root)
+		ret=1
+	else
+		echo "This repo doesn't contain any branch, and is empty"
+		# note that stashing doesn't work without a branch, so the above check is sufficient
+		exit 0
+	fi
+fi
+
+
 for remote in $list;
 do
 	# check commits and branches
