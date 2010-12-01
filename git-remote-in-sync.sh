@@ -1,8 +1,10 @@
 #!/bin/bash
 # checks if the specified remote(s) are in sync with what we have
 # in other words: do we have anything which is not at the remote?
-# Any A commit, tag, branch, dirty WC/index or stashed state?
-
+# Any commit, tag, branch, dirty WC/index or stashed state?
+# This is especially useful if you're wondering:
+# "is it safe to delete this clone? is any work here that needs to be
+# distributed/shared/pushed first?"
 # Note that there are some special cases, like a branch here may
 # have a different name on the remote.  This script is not aware of
 # stuff like that.  Also, `git status` will not detect if the local
