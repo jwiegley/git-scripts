@@ -37,7 +37,6 @@ if len(sys.argv) > 1:
             ref = arg
 
 for commit in repo.iter_commits(ref, paths=path):
-    hash_id  = commit.sha
     author   = commit.author
     date     = commit.committed_date
     log_text = commit.message.split('\n')[0]
@@ -52,19 +51,42 @@ for commit in repo.iter_commits(ref, paths=path):
     diff = commit.diff(commit.parents[0])
     files = []
     for f in diff:
-        p = f.a_blob.path or f.b_blob.path
+        if not f.a_blob:
+            p = f.b_blob.path
+        elif not f.b_blob:
+            p = f.a_blob.path
+        else:
+            continue
+
         p2 = re.sub('^' + path + '/', '', p)
         if p != p2:
             files.append(p2)
 
     fp = Popen(["fmt", "-72"], shell = True, stdin = PIPE, stdout = PIPE)
-    fp.stdin.write("\t* %s: %s" % (string.join(files, ",\n\t"), log_text))
+    if files:
+        fp.stdin.write("\t* %s: %s" % (string.join(files, ",\n\t"), log_text))
+    else:
+        fp.stdin.write("\t* %s" % log_text)
     fp.stdin.close()
     log_text = fp.stdout.read()
     del fp
 
-    print "%s  %s  <%s>\n\n%s%s" % \
+    print "%s  %s  <%s>\n" % \
         (time.strftime("%Y-%m-%d", time.gmtime(date)),
-         author.name, author.email, log_text, log_text_remainder)
+         author.name, author.email)
+
+    if path:
+        log_text = re.sub(' ' + path + '/', ' ', log_text)
+        log_text_remainder = re.sub(' ' + path + '/', ' ', log_text_remainder)
+
+    # If the log_text_remainder already begins with a *, then use that as the
+    # changelog text.
+    if re.match('\s+\* ', log_text_remainder):
+        if log_text_remainder[0] == '\n':
+            print log_text_remainder[1:]
+        else:
+            print log_text_remainder
+    else:
+        print "%s%s" % (log_text, log_text_remainder)
 
 # git-changelog ends here

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+old=$1
+new=$2
+
+git rm --cached -r "$old"
+mv "$old" x.$$
+mv x.$$ "$new"
+git add "$new"

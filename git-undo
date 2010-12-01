@@ -1,0 +1,32 @@
+#!/bin/bash
+
+cmd=$1
+shift 1
+
+case $cmd in
+    commit) 
+        if [[ -z "$1" ]]; then
+            git reset --soft HEAD^
+        else
+            git revert "$@"
+        fi
+        ;;
+
+    add|rm) 
+        git reset --mixed "$@"
+        ;;
+
+    changes) 
+        git reset --hard HEAD
+        ;;
+
+    change) 
+        git checkout -f -- "$@"
+        ;;
+
+    pull|merge|rebase|am)
+        git reset --hard HEAD@{0}
+        ;;
+esac
+
+exit 0
