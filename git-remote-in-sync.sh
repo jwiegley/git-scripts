@@ -20,7 +20,7 @@ do
 	out=`git push --all -n $remote 2>&1`
 	if [ "$out" != 'Everything up-to-date' ];
 	then
-		echo -e "***** Dirty commits/branches: *****\n$out"
+		echo -e "***** Dirty commits/branches: *****\n$out" >&2
 		ret=1
 	fi
 
@@ -28,7 +28,7 @@ do
 	out=`git push --tags -n $remote 2>&1`
 	if [ "$out" != 'Everything up-to-date' ];
 	then
-		echo -e "***** Dirty tags: *****\n$out"
+		echo -e "***** Dirty tags: *****\n$out" >&2
 		ret=1
 	fi
 done
@@ -41,7 +41,7 @@ nothing to commit (working directory clean)"
 out=`git status`
 if [ "$out" != "$exp" ];
 then
-	echo "***** Dirty WC or index *****"
+	echo "***** Dirty WC or index *****" >&2
 	git status
 	ret=1
 fi
@@ -49,7 +49,7 @@ fi
 # stash
 if [ `git stash list | wc -l` -gt 0 ];
 then
-	echo "***** Dirty stash: *****"
+	echo "***** Dirty stash: *****" >&2
 	GIT_PAGER= git stash list
 	ret=1
 fi
