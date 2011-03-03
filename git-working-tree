@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# Set contents of the working tree equal to TREEISH
+
+/bin/rm -fr *
+git archive --format=tar "$@" | tar xf -
