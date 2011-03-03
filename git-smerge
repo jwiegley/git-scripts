@@ -1,0 +1,37 @@
+#!/bin/bash
+
+current=$(git symbolic-ref HEAD | sed 's%refs/heads/%%')
+branch=$1
+
+if ! git merge $branch; then
+    echo GIT-SMERGE: Simple merge with $branch failed, attempting rebase-merge
+
+    git reset --hard HEAD
+    git checkout -b temp.$$
+
+    if git rebase $branch > /dev/null 2>&1; then
+        echo GIT-SMERGE: Rebase with $branch succeeded, using tree to create merge commit
+
+        if ! git checkout $current; then
+            echo GIT-SMERGE: Some strange problem occurred!
+            git branch -D temp.$$
+            exit 1
+        fi
+
+        git merge $branch > /dev/null 2>&1 # this is sure to fail
+        git clean -fd
+        git archive --format=tar temp.$$ | tar xf -
+        git branch -D temp.$$
+        git add .
+        git add -A
+        git ls-files --deleted -z | xargs -0 git rm 
+        git commit
+    else
+        echo GIT-SMERGE: Rebase with $branch failed, returning to failed merge
+
+        git rebase --abort
+        git checkout -f $current
+        git branch -D temp.$$
+        git merge $branch > /dev/null 2>&1 # this is sure to fail
+    fi
+fi
