@@ -1,0 +1,12 @@
+#!/bin/bash
+
+BASE=origin/upstream
+
+git diff $BASE HEAD > changes.diff
+git diff -w $BASE HEAD > changes-w.diff
+
+interdiff changes-w.diff changes.diff > ws.diff
+rm changes.diff changes-w.diff
+
+patch -p1 -R < ws.diff && git commit -a -m "Match whitespace with $BASE"
+rm ws.diff
