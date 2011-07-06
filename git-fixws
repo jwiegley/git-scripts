@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# If you are using MacPorts, you'll need to install 'patchutils'
+
 BASE=origin/upstream
 
 git diff $BASE HEAD > changes.diff
