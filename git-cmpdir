@@ -1,0 +1,17 @@
+#!/bin/bash
+
+stat=false
+if [[ "$1" == "--stat" ]]; then
+    stat=true
+    shift 1
+fi
+
+git checkout $1
+sync
+echo ----------------------------------------------------------------------
+
+if [[ $stat == true ]]; then
+    diff -w -U3 -r . "$2" | diffstat | grep -v only$
+else
+    diff -w -U3 -r . "$2"
+fi
