@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# This script makes it much easier to add new submodules
+
+GIT_DIR=$(git rev-parse --git-dir)
+
+PROJ_DIR=$(dirname "$GIT_DIR")
+PROJ_DIR=$(abspath "$PROJ_DIR")
+PROJ_RE=$(echo "$PROJ_DIR/" | sed 's/\//\\\//g')
+
+for dir in "$@"; do
+    SUBDIR=$(abspath "$dir")
+    SUBDIR=$(echo $SUBDIR | sed s/$PROJ_RE//)
+
+    repo=$(echo $(grep "url = " "$dir/.git/config") | \
+        sed 's/.*url = //' | \
+        sed 's/git@github.com:\([^\/]*\)\//git:\/\/github.com\/\1\//' )
+
+    (cd "$PROJ_DIR" && \
+     git submodule add "$repo" "$SUBDIR" && \
+     git commit -m "Added submodule $SUBDIR")
+done
+
+### addsub ends here
