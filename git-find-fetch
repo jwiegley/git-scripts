@@ -60,6 +60,7 @@ find "$@" \( -name .git -o -name '*.git' \) -type d | \
 
 		fi
 
+		echo $repo_dir
 		GIT_DIR="$repo_dir" git remote update
 	    fi
 
