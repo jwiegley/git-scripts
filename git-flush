@@ -18,5 +18,4 @@ if [ "$1" = "-f" ]; then
     git stash clear
 fi
 
-git repack -adf #--window=200 --depth=50
-git prune
+git maxpack
