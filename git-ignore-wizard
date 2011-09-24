@@ -1,0 +1,45 @@
+#!/bin/bash
+# take a file/directory as arg1, to be added to ignore rules.
+# the user selects which ignore rules using dmenu
+# in the .gitconfig case, we should probably allow the user to edit it,
+# because he probably wants a more generic pattern instead of the real
+# basename
+
+file=$1
+if [ -z "$file" -o ! -e "$file" ]
+then
+	echo 'No such file or directory' >&2
+	exit 2
+fi
+
+type=`echo \
+".gitignore-root    # files all developers of this repo will want to exclude, in one central location
+.gitignore-dirname # same, but ignore file in parent directory, so you can have multiple .gitignore files
+exclude            # specific to it's repo, but irrelevant to other devs
+.gitconfig         # patterns you want to ignore, independent of the repository
+" | dmenu | cut -d ' ' -f1`
+
+[ -z "$type" ] && echo 'Cancelled' && exit 0
+
+dirname=` dirname  $file`
+basename=`basename $file`
+case $type in
+	.gitignore-root)
+		root=`git root $file` || exit 2
+		dirname=$(readlink -f $dirname)
+		relative_dir=$(echo $dirname | sed "s#^$root##") # ie: /src
+		echo "$relative_dir/$basename" >> $root/.gitignore
+		;;
+	.gitignore-dirname)
+		git root $file >/dev/null || exit 2
+		echo "$basename" >> $dirname/.gitignore
+		;;
+	exclude)
+		root=`git root $file` || exit 2
+		dirname=$(readlink -f $dirname)
+		relative_dir=$(echo $dirname | sed "s#^$root##")
+		echo "$relative_dir/$basename" >> $root/info/exclude
+		;;
+	.gitconfig)
+		#TODO. git config --get-all ?, then another dmenu? how many such config keys are allowed?
+esac

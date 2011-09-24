@@ -2,7 +2,7 @@
 
 require 'fileutils'
 
-$name = "git merge-from-svn" 
+$name = "git merge-from-svn"
 
 def usage retcode=0
   puts <<USAGE
