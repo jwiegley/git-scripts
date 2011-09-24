@@ -1,0 +1,15 @@
+#!/bin/bash
+if [ -z "$1" -o -z "$2" ]
+then
+	echo "usage: $0 <from> <to>" >&2
+	exit 2
+fi
+from=$1
+to=$2
+git checkout $from
+git checkout -b ${from}_tmp
+# drops you in an editor, pick the changes you want
+git rebase -i $to
+git checkout $to
+git pull . ${from}_tmp
+git branch -d ${from}_tmp

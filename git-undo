@@ -4,7 +4,7 @@ cmd=$1
 shift 1
 
 case $cmd in
-    commit) 
+    commit)
         if [[ -z "$1" ]]; then
             git reset --soft HEAD^
         else
@@ -12,15 +12,15 @@ case $cmd in
         fi
         ;;
 
-    add|rm) 
+    add|rm)
         git reset --mixed "$@"
         ;;
 
-    changes) 
+    changes)
         git reset --hard HEAD
         ;;
 
-    change) 
+    change)
         git checkout -f -- "$@"
         ;;
 

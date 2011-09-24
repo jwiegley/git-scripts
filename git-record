@@ -39,7 +39,7 @@ class Hunk:
 		self.lines = lines
 		self.keep = False
 		self.binary = binary
-	
+
 	def format(self):
 		output = self.diff.header.modified + "\n"
 		if self.diff.header.deleted:
@@ -77,7 +77,7 @@ class Diff:
 		for hunk in self.hunks:
 			hunk.diff = self
 		self.keep = False
-	
+
 	def filter(self):
 		output = '\n'.join(self.header.lines) + "\n"
 		for hunk in self.hunks:
@@ -94,7 +94,7 @@ class Diff:
 				continue
 			output += diff.filter()
 		return output
-	
+
 	@classmethod
 	def parse(kls, lines):
 		in_header = True

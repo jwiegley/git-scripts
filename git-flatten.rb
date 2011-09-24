@@ -54,13 +54,13 @@ def git_dir
 end
 
 def git_editor
-  $git_editor ||= execute("git config core.editor", :one => true) || 
+  $git_editor ||= execute("git config core.editor", :one => true) ||
                   ENV['VISUAL'] || ENV['EDITOR'] || 'vi'
 end
 
 def git_branch
-  $git_branch ||= execute("git branch", 
-                          :select => lambda{|l| l =~ /^\*/}, 
+  $git_branch ||= execute("git branch",
+                          :select => lambda{|l| l =~ /^\*/},
                           :filter => lambda{|l| l.sub(/\* /, '')},
                           :one => true)
 end
@@ -71,7 +71,7 @@ end
 
 def hash_to_str hash
   token = '--token--'
-  execute("git log -1 --pretty=format:'%h#{token}%s' #{hash}", 
+  execute("git log -1 --pretty=format:'%h#{token}%s' #{hash}",
           :one => true).split(/#{token}/)
 end
 
@@ -242,8 +242,8 @@ RESOLV
       die "A flatten is in progress, try --continue, --skip or --abort." if stored_last
       squash = opts[:squash] || []
       orig = parse_flatten ref, :read => true
-      target = rev_list ref, 
-                        "^#{git_branch}", "^#{orig}", 
+      target = rev_list ref,
+                        "^#{git_branch}", "^#{orig}",
                         *[refs, squash.map{|s| "^#{s}"}].flatten
     end
     last = stored_last

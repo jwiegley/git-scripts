@@ -6,7 +6,7 @@
 # music, video, and random downloads are not.  In order to accommodate
 # this scenario, you can ignore everything like so:
 #
-#   $ more ~/.gitignore 
+#   $ more ~/.gitignore
 #   *
 #
 # Then, force git-add to track files you care about.  Unfortunately

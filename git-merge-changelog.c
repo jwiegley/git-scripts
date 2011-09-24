@@ -808,7 +808,7 @@ conflict_write (FILE *fp, struct conflict *c)
 
 /* Long options.  */
 static const struct option long_options[] =
-{ 
+{
   { "help", no_argument, NULL, 'h' },
   { "split-merged-entry", no_argument, NULL, CHAR_MAX + 1 },
   { "version", no_argument, NULL, 'V' },
