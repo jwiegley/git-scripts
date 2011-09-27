@@ -3,5 +3,5 @@
 export GIT_DIR
 
 for GIT_DIR in *.git; do 
-    d=$(git show --pretty=%ci -s) && touch -d "$d" "$GIT_DIR"
+    d=$(git log --pretty=%ci -1) && touch -d "$d" "$GIT_DIR"
 done

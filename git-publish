@@ -7,4 +7,4 @@ ssh $SERVER "mkdir $PATHNAME; GIT_DIR=$PATHNAME git init"
 
 git remote add $3 git+ssh://$SERVER$PATHNAME
 
-git push origin master:refs/heads/master
+git push $3 master:refs/heads/master
