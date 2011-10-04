@@ -34,71 +34,68 @@ if [[ "$1" == --repack ]]; then
 fi
 
 find "$@" \( -name .git -o -name '*.git' \) -type d | \
-    while read repo_dir
+while read repo_dir
+do
+    if [[ ! -f "$repo_dir"/config ]]; then
+        continue
+    fi
+
+    if [[ -f "$repo_dir"/../fetch.sh ]]; then
+        (cd "$repo_dir"/..; sh fetch.sh)
+        continue
+    fi
+
+    if [[ $mirror_only == false ]]; then
+        # If this is a git-svn repo, use git svn fetch
+        if grep -q '^\[svn-remote ' "$repo_dir"/config
+        then
+            if [[ -d "$repo_dir"/svn ]]; then
+                echo git svn fetch: $repo_dir
+                GIT_DIR="$repo_dir" git svn fetch
+            fi
+
+        # If this is a gc-utils repo, use gc-utils update
+        elif grep -q '^\[gc-utils\]' "$repo_dir"/config
+        then
+            echo gc-update: $repo_dir
+            (cd "$repo_dir"; gc-update)
+
+        fi
+
+        echo $repo_dir
+        GIT_DIR="$repo_dir" git remote update
+    fi
+
+    HG_DIR="$repo_dir"/../.git-hg
+    FAST_EXPORT=$HOME/src/fast-export/hg-fast-export.sh
+    if [[ -d "$HG_DIR" ]]; then
+        (cd "$HG_DIR"; hg pull && hg update)
+        (cd "$repo_dir"/..; PYTHON=python2.6 sh $FAST_EXPORT -r .git-hg)
+    fi
+
+    BZR_DIR="$repo_dir"/../.git-bzr
+    if [[ -d "$BZR_DIR" ]]; then
+        (cd "$BZR_DIR"; bzr pull)
+        (cd "$repo_dir"/..; git bzr fetch upstream | cat)
+    fi
+
+    DARCS_DIR="$repo_dir"/../.git-darcs
+    GIT_DARCS_IMPORT=$HOME/bin/git-darcs-import
+    if [[ -d "$DARCS_DIR" && -f "$GIT_DARCS_IMPORT" ]]; then
+        (cd "$DARCS_DIR"; darcs pull)
+        (cd "$repo_dir"/..; $GIT_DARCS_IMPORT .git-darcs)
+        (cd "$repo_dir"; git rebase git-darcs-import)
+    fi
+
+    if [[ $repack == true ]]; then
+        GIT_DIR="$repo_dir" git flush
+    fi
+
+    for remote in $(GIT_DIR="$repo_dir" git remote)
     do
-	if [[ -f "$repo_dir"/config ]]
-	then
-	    if [[ -f "$repo_dir"/../fetch.sh ]]; then
-		(cd "$repo_dir"/..; sh fetch.sh)
-		continue
-	    fi
-
-	    if [[ $mirror_only == false ]]; then
-		# If this is a git-svn repo, use git svn fetch
-		if grep -q '^\[svn-remote ' "$repo_dir"/config
-		then
-                    if [[ -d "$repo_dir"/svn ]]; then
-		        echo git svn fetch: $repo_dir
-		        GIT_DIR="$repo_dir" git svn fetch
-                    fi
-
-		# If this is a gc-utils repo, use gc-utils update
-		elif grep -q '^\[gc-utils\]' "$repo_dir"/config
-		then
-		    echo gc-utils update: $repo_dir
-		    (cd "$repo_dir"; gc-utils update)
-
-		fi
-
-		echo $repo_dir
-		GIT_DIR="$repo_dir" git remote update
-	    fi
-
-	    for remote in $(GIT_DIR="$repo_dir" git remote)
-	    do
-		if [[ $remote == mirror ]]; then
-		    echo git push: $repo_dir -- $remote
-		    GIT_DIR="$repo_dir" git push -f --mirror $remote
-		fi
-	    done
-
-	    if [[ $repack == true ]]; then
-		GIT_DIR="$repo_dir" git fsck --full && \
-		    GIT_DIR="$repo_dir" git repack -a -d -f --window=200 --depth=50 && \
-		    GIT_DIR="$repo_dir" git prune
-	    fi
-
-	    HG_DIR="$repo_dir"/../.git-hg
-	    FAST_EXPORT=$HOME/src/fast-export/hg-fast-export.sh
-	    if [[ -d "$HG_DIR" ]]; then
-		(cd "$HG_DIR"; hg pull && hg update)
-		(cd "$repo_dir"/..; PYTHON=python2.6 sh $FAST_EXPORT -r .git-hg)
-		(cd "$repo_dir"; git push)
-	    fi
-
-	    BZR_DIR="$repo_dir"/../.git/bzr-git
-	    if [[ -d "$BZR_DIR" ]]; then
-		(cd "$repo_dir"/..; git bzr fetch origin)
-		(cd "$repo_dir"; git push)
-	    fi
-
-	    DARCS_DIR="$repo_dir"/../.git-darcs
-	    GIT_DARCS_IMPORT=$HOME/bin/git-darcs-import
-	    if [[ -d "$DARCS_DIR" && -f "$GIT_DARCS_IMPORT" ]]; then
-		(cd "$DARCS_DIR"; darcs pull)
-		(cd "$repo_dir"/..; $GIT_DARCS_IMPORT .git-darcs)
-		(cd "$repo_dir"; git rebase git-darcs-import)
-		(cd "$repo_dir"; git push origin master)
-	    fi
-	fi
+        if [[ $remote == mirror ]]; then
+            echo git push: $repo_dir -- $remote
+            GIT_DIR="$repo_dir" git push -f --mirror $remote
+        fi
     done
+done
