@@ -32,7 +32,7 @@ obfuscate = ARGV.delete("-o")
 
 author = nil
 state = :pre_author
-`git log -p --no-color`.each do |l|
+`git log -p --no-color`.lines.each do |l|
   case
   when (state == :pre_author || state == :post_author) && l =~ /Author: (.*)$/
     author = $1
