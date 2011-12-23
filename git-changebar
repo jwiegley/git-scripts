@@ -1,0 +1,75 @@
+#!/bin/sh --
+#
+# git-changebar
+#
+# Will add changebars to a LaTeX file stored in git based on the diff to a past
+# treeish or branch in the repository
+#
+# Copyright (c) Matthew Johnson <src@matthew.ath.cx> 2007
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation version 2.  This program is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+# Public License for more details.  You should have received a copy of the GNU
+# General Public License along with this program; if not, write to the Free
+# Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307,
+# USA.
+
+
+
+if [ -z "$1" ] || [ -z "$2" ] || [ "--help" = "$1" ]; then
+   echo "Syntax: $0 <treeish> <file...>"
+   exit 1
+fi
+
+REV="$1"
+shift
+
+while ! [ -z "$1" ]
+do
+   if grep 'tex[[:space:]]*$' >/dev/null <<@ 
+$1 
+@
+   then
+      FILE="$1"
+      OUT="${FILE%.tex}.diff.tex"
+      cp "$FILE" "$OUT"
+
+      docstart=`grep -n 'begin{document}' "$FILE" | cut -d: -f1`
+
+      for i in `GIT_DIFF_OPTS=-u0 git diff "$REV" "$FILE" | 
+                sed -n '/^@@/s/@@ -[0-9,]* +\([0-9,]*\).*/\1/p'`
+      do
+         start=`cut -d, -f1 <<@
+$i
+@
+`
+         if [ "$start" -gt "$docstart" ]
+         then
+            if grep ',' >/dev/null <<@
+$i
+@
+            then
+               diff=`cut -d, -f2 <<@ 
+$i
+@
+`
+            else
+               diff=0
+            fi
+            end=$(( $start + $diff ))
+            sed -i "${start}s/^/\\\\cbstart{} /" "$OUT"
+            sed -i "${end}s/$/ \\\\cbend{}/" "$OUT"
+         fi
+      done
+
+      sed -i '2i\\\\usepackage[dvips]{changebar}\n' "$OUT"
+      echo "Changebars added to $OUT"
+   else
+      echo "$1 is not a TeX file"
+   fi
+
+   shift
+done
