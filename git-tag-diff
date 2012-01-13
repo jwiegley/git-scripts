@@ -1,0 +1,6 @@
+#!/bin/bash
+# Show the differences between local tags and ones on the remote, if any
+# (defaults to origin, but another remote may be specified on the commandline)
+
+diff -u <(git show-ref --tags --dereference) \
+    <(git ls-remote --tags $1 | tr '\t' ' ')
