@@ -19,6 +19,8 @@
 #	- Fit as much as possible in 80 columns
 #	- Make sed \/ quoting more readable using alternative separators
 #	- Remove EOL whitespaces.
+#       - 2011-12-27 Incorporate fixes by https://github.com/nfloyd
+#         from the Gist comment 2011-07-31 https://gist.github.com/946727
 
 # Get the tracking branch (if we're on a branch)
 
@@ -39,7 +41,7 @@ esac
 
 REV=$(git svn info |
       grep 'Last Changed Rev:' |
-      sed --extended-regexp 's/^.*: ([[:digit:]]*)/\1/')
+      sed --regexp-extended 's/^.*: ([[:digit:]]*)/\1/')
 
 # Then do the diff from the highest revision on the current branch and
 # masssage into SVN format
@@ -47,7 +49,7 @@ REV=$(git svn info |
 git diff \
     --no-prefix $(git rev-list --date-order --max-count=1 $TRACKING_BRANCH) \
     "$@" |
-sed -e "/--- \/dev\/null/{ N; s|^--- /dev/null\n+++ \(.*\)|---\1(revision 0)\n+++\1(revision 0)|;}"
+sed -e "/--- \/dev\/null/{ N; s|^--- /dev/null\n+++ \(.*\)|---\1(revision 0)\n+++\1(revision 0)|;}" \
     -e "s/^--- .*/&     (revision $REV)/" \
     -e "s/^+++ .*/&     (working copy)/" \
     -e "s/^diff --git [^[:space:]]*/Index:/" \
