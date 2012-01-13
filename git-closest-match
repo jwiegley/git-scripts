@@ -6,7 +6,7 @@ spec=$1
 mode=${2:-diff} # num: number of lines or diff: actual diff/log message?
 range=${3:-30} # 'all' or most recent <num> in current branch?. 'all' can be quite slow
 if [ "$range" = 'all' ]; then
-	all=`git-rev-list --all | awk '/^commit/ {print $NF}'`
+	all=`git rev-list --all | awk '/^commit/ {print $NF}'`
 else
 	all=`git log -n $range | awk '/^commit/ {print $NF}'`
 fi
