@@ -1,0 +1,42 @@
+#!/bin/sh
+
+## Copyright (C) 2006-2011 Daniel Baumann <daniel.baumann@progress-technologies.net>
+##
+## This program comes with ABSOLUTELY NO WARRANTY; for details see COPYING.
+## This is free software, and you are welcome to redistribute it
+## under certain conditions; see COPYING for details.
+
+
+set -e
+
+# User is not in git repository
+if ! git branch > /dev/null 2>&1
+then
+	echo "E: '$(basename ${PWD})' - Not a Git repository."
+	exit 1
+fi
+
+echo "P: Checking out all remote branches..."
+
+# Rememeber current branch
+_CURRENT_BRANCH="$(git branch | awk '/^\* / { print $2 }')"
+
+# Checkout all remote branches
+for _REMOTE_BRANCH in $(git branch -r | awk '{ print $1 }')
+do
+	_BRANCH_NAME="$(echo ${_REMOTE_BRANCH} | cut -d/ -f 2-)"
+
+	if [ "${_BRANCH_NAME}" != "HEAD" ]
+	then
+		if ! git branch | grep -q "${_BRANCH_NAME}$"
+		then
+			git checkout -b ${_BRANCH_NAME} ${_REMOTE_BRANCH}
+		fi
+	fi
+done
+
+# Switch back to current branch
+if [ "$(git branch | awk '/^\* / { print $2 }')" != "${_CURRENT_BRANCH}" ]
+then
+	git checkout ${_CURRENT_BRANCH}
+fi

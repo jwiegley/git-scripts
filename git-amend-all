@@ -1,0 +1,20 @@
+#!/bin/sh
+
+## Copyright (C) 2006-2011 Daniel Baumann <daniel.baumann@progress-technologies.net>
+##
+## This program comes with ABSOLUTELY NO WARRANTY; for details see COPYING.
+## This is free software, and you are welcome to redistribute it
+## under certain conditions; see COPYING for details.
+
+
+set -e
+
+# User is not in git repository
+if ! git branch > /dev/null 2>&1
+then
+	echo "E: '$(basename ${PWD})' - Not a Git repository."
+	exit 1
+fi
+
+git add .
+git commit -a --amend -C HEAD

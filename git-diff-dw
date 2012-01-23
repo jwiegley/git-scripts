@@ -1,0 +1,2 @@
+#!/bin/sh
+/Applications/Misc/DeltaWalker.app/Contents/MacOS/DeltaWalker -nosplash "$PWD/$1" "$2"

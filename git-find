@@ -83,6 +83,7 @@ class Commit < GitObject
     if @names.include?(name)
       return
     end
+    puts name
     add_name(name)
 
     offset = 0
