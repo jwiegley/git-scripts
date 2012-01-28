@@ -114,10 +114,7 @@ module GitUpdate
     end
 
     if not $params[:fetchonly].value
-      g.branches.local.each do |branch|
-        push_or_pull g, working_dir, branch
-      end
-
+      g.branches.local.each { |b| push_or_pull g, working_dir, b }
       status working_dir
     end
   end
@@ -152,8 +149,13 @@ Main {
       end
 
       first = true
+      seen  = Set.new
+
       # Recursively search for .git directories, following symlinks once
-      Dir.glob File.join(dir, '**', '*', '**', '.git') do |path|
+      Dir.glob File.join(dir, '**{,/*/**}/.git') do |path|
+        next if seen.include? path
+        seen << path
+
         if first
           puts 'done'
           first = false
