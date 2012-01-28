@@ -92,10 +92,12 @@ module GitUpdate
         git_log = "git --git-dir='#{@git_dir}' log --no-merges --oneline"
 
         out = `#{git_log} #{remote_sha}..#{branch.gcommit.sha}`
-        top_ten 'NEED PUSH', "#{working_dir}\##{branch.name}", out.split("\n")
+        top_ten('NEED PUSH', "#{working_dir}\##{branch.name}",
+                out.split("\n"), true)
 
         out = `#{git_log} #{branch.gcommit.sha}..#{remote_sha}`
-        top_ten 'NEED PULL', "#{working_dir}\##{branch.name}", out.split("\n")
+        top_ten('NEED PULL', "#{working_dir}\##{branch.name}",
+                out.split("\n"), true)
       end
     end
   end
