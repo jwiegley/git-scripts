@@ -152,7 +152,8 @@ Main {
       end
 
       first = true
-      Dir.glob(File.join dir, '**', '.git') do |path|
+      # Recursively search for .git directories, following symlinks once
+      Dir.glob File.join(dir, '**', '*', '**', '.git') do |path|
         if first
           puts 'done'
           first = false
