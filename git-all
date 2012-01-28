@@ -79,7 +79,7 @@ module GitUpdate
   end
 
   def GitUpdate.push_or_pull g, working_dir, branch
-    remote = git_svn_repo(g) or g.config["branch.#{branch.name}.remote"]
+    remote = g.config["branch.#{branch.name}.remote"] || git_svn_repo(g)
     if remote
       remote_sha =
         if git_svn_repo g
