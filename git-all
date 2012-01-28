@@ -109,17 +109,17 @@ module GitUpdate
     g = Git.open(working_dir, :log => logger)
     @git_dir = File.join working_dir, '.git'
 
-    if $params[:fetch].value
+    if $params[:fetch].value or $params[:fetchonly].value
       fetch g, working_dir
     end
 
-    g.branches.local.each do |branch|
-      if not branch.current or git_svn_repo g
+    if not $params[:fetchonly].value
+      g.branches.local.each do |branch|
         push_or_pull g, working_dir, branch
       end
-    end
 
-    status working_dir
+      status working_dir
+    end
   end
 end
 
@@ -132,6 +132,9 @@ Main {
 
   option(:fetch) {
     description 'Fetch from all remotes'
+  }
+  option(:fetchonly) {
+    description 'Only fetch, nothing else'
   }
   option(:untracked) {
     description 'Display untracked files as possible changes'
