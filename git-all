@@ -31,7 +31,7 @@ module GitUpdate
       if lines.empty?
         @last_empty = true
       else
-        puts lines.first(10)
+        puts lines.first(10).map { |line| line[0...80] }
         if lines.size > 10
           puts "... (and #{lines.size - 10} more)"
         end
