@@ -2,6 +2,7 @@
 
 # Report the status of all Git repositories within a directory tree.
 
+require 'pty'
 require 'main'
 require 'git'
 
@@ -140,32 +141,19 @@ Main {
 
   def run
     $params = params
-    $params[:dir].values.each do |dir|
-      print 'Looking for Git repositories'
-      if dir == '.'
-        print '...'
-      else
-        print " in #{dir} ..."
-      end
+    seen    = Set.new
+    cmd     = "find -H #{$params[:dir].values * ' '} -name .git"
 
-      first = true
-      seen  = Set.new
-
-      # Recursively search for .git directories, following symlinks once
-      Dir.glob File.join(dir, '**{,/*/**}/.git') do |path|
-        next if seen.include? path
+    PTY.spawn cmd do |stdin, stdout, pid|
+      stdin.each do |path|
+        next if seen.include? path # never process the same path twice
         seen << path
-
-        if first
-          puts 'done'
-          first = false
-        end
 
         begin
           GitUpdate.report File.dirname(path)
         rescue => ex
           GitUpdate.top_ten('FAILED', path, [ex.message] + ex.backtrace,
-                            false, '#')
+                        false, '#')
         end
       end
     end
