@@ -2,7 +2,6 @@
 
 # Report the status of all Git repositories within a directory tree.
 
-require 'pty'
 require 'main'
 require 'git'
 
@@ -142,10 +141,11 @@ Main {
   def run
     $params = params
     seen    = Set.new
-    cmd     = "find -H #{$params[:dir].values * ' '} -name .git"
+    dirs    = $params[:dir].values * ' '
 
-    PTY.spawn cmd do |stdin, stdout, pid|
-      stdin.each do |path|
+    # This command relies on GNU find's -printf directive
+    IO.popen "find -H -L #{dirs} -name .git -printf '%p\\n\\c'" do |io|
+      while path = io.gets
         next if seen.include? path # never process the same path twice
         seen << path
 
@@ -155,6 +155,7 @@ Main {
           GitUpdate.top_ten('FAILED', path, [ex.message] + ex.backtrace,
                         false, '#')
         end
+        STDOUT.flush
       end
     end
   end
