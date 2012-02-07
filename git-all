@@ -25,6 +25,8 @@ module GitUpdate
   end
 
   def GitUpdate.top_ten category, message, lines, second_flag=false, marker='='
+    return if $params[:fetch].value and marker == '='
+
     if not lines.empty? or ($params[:verbose].value and not second_flag)
       separator
       puts marker * 2 + " #{category} " + marker * 2 + "  #{message}"
@@ -129,6 +131,9 @@ Main {
 
   option(:fetch) {
     description 'Fetch from all remotes'
+  }
+  option(:errors) {
+    description 'Only show Git failures'
   }
   option(:fetchonly) {
     description 'Only fetch, nothing else'
