@@ -95,11 +95,13 @@ module GitUpdate
 
         out = `#{git_log} #{remote_sha}..#{branch.gcommit.sha}`
         top_ten('NEED PUSH', "#{working_dir}\##{branch.name}",
-                out.split("\n"), true)
+            out.split("\n"), true)
 
-        out = `#{git_log} #{branch.gcommit.sha}..#{remote_sha}`
-        top_ten('NEED PULL', "#{working_dir}\##{branch.name}",
-                out.split("\n"), true)
+        if $params[:pulls].value
+          out = `#{git_log} #{branch.gcommit.sha}..#{remote_sha}`
+          top_ten('NEED PULL', "#{working_dir}\##{branch.name}",
+              out.split("\n"), true)
+        end
       end
     end
   end
@@ -137,6 +139,9 @@ Main {
   }
   option(:fetchonly) {
     description 'Only fetch, nothing else'
+  }
+  option(:pulls) {
+    description 'Include NEED PULL sections'
   }
   option(:untracked) {
     description 'Display untracked files as possible changes'
