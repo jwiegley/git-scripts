@@ -144,24 +144,28 @@ Main {
   option(:verbose)
 
   def run
-    $params = params
-    seen    = Set.new
-    dirs    = $params[:dir].values * ' '
+    $params  = params
+    seen     = Set.new
+    dirs     = $params[:dir].values * ' '
+    # Relies on GNU find's -printf directive
+    find_cmd = "find -H -L #{dirs} -name .git -printf '%p\\n\\c'"
 
-    # This command relies on GNU find's -printf directive
-    IO.popen "find -H -L #{dirs} -name .git -printf '%p\\n\\c'" do |io|
-      while path = io.gets
-        next if seen.include? path # never process the same path twice
-        seen << path
+    # This asynchronous usage allows the "find" command to continue producing
+    # pathnames while we work on them.  Find.find() would block until all the
+    # pathnames had been found, which can be very slow (especially on laptop
+    # hard drives with large filesets).
 
-        begin
-          GitUpdate.report File.dirname(path)
-        rescue => ex
-          GitUpdate.top_ten('FAILED', path, [ex.message] + ex.backtrace,
-                        false, '#')
-        end
-        STDOUT.flush
+    IO.popen(find_cmd).each do |path|
+      next if seen.include? path # never process the same path twice
+      seen << path
+
+      begin
+        GitUpdate.report File.dirname(path)
+      rescue => ex
+        GitUpdate.top_ten('FAILED', path, [ex.message] + ex.backtrace,
+                      false, '#')
       end
+      STDOUT.flush
     end
   end
 }
