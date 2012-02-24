@@ -161,6 +161,8 @@ Main {
     # hard drives with large filesets).
 
     IO.popen(find_cmd).each do |path|
+      path = File.absolute_path path
+
       next if seen.include? path # never process the same path twice
       seen << path
 
