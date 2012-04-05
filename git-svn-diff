@@ -21,6 +21,9 @@
 #	- Remove EOL whitespaces.
 #       - 2011-12-27 Incorporate fixes by https://github.com/nfloyd
 #         from the Gist comment 2011-07-31 https://gist.github.com/946727
+#
+#   <javabrett>
+#   - Retain space after leading --- and +++, add TAB before (revision 0)
 
 # Get the tracking branch (if we're on a branch)
 
@@ -49,7 +52,7 @@ REV=$(git svn info |
 git diff \
     --no-prefix $(git rev-list --date-order --max-count=1 $TRACKING_BRANCH) \
     "$@" |
-sed -e "/--- \/dev\/null/{ N; s|^--- /dev/null\n+++ \(.*\)|---\1(revision 0)\n+++\1(revision 0)|;}" \
+sed -e "/--- \/dev\/null/{ N; s|^--- /dev/null\n+++ \(.*\)|--- \1\t(revision 0)\n+++ \1\t(revision 0)|;}" \
     -e "s/^--- .*/&     (revision $REV)/" \
     -e "s/^+++ .*/&     (working copy)/" \
     -e "s/^diff --git [^[:space:]]*/Index:/" \
