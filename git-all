@@ -42,12 +42,12 @@ module GitUpdate
   end
 
   def GitUpdate.git_svn_repo g
-    g.config['svn-remote.svn.url']
+    g.config['svn-remote.svn.url'] rescue false
   end
 
   def GitUpdate.fetch g, working_dir
     case
-    when git_svn_repo(g)
+    when git_svn_repo g
       lines = `git --git-dir='#{@git_dir}' svn fetch 2>&1`.split("\n")
       lines.reject! do |line|
         line =~ /^(W: |This may take a while|Checked through|$)/
@@ -81,7 +81,7 @@ module GitUpdate
   end
 
   def GitUpdate.push_or_pull g, working_dir, branch
-    remote = g.config["branch.#{branch.name}.remote"] || git_svn_repo(g)
+    remote = g.config["branch.#{branch.name}.remote"] || git_svn_repo g
     if remote
       remote_sha =
         if git_svn_repo g
