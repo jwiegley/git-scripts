@@ -1,0 +1,2 @@
+#!/bin/bash
+exec find . -name .git -type d -exec git --git-dir="{}" "$@" \;
