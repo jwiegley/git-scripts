@@ -5,6 +5,8 @@
 # be bloating your pack files.
 
 rm -fr .git/refs/original
+rm -fr .git/refs/snapshots
+
 if [ -f .git/info/refs ]; then
     perl -i -ne 'print unless /refs\/original/;' .git/info/refs
 fi
