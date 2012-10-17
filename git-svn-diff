@@ -22,8 +22,9 @@
 #       - 2011-12-27 Incorporate fixes by https://github.com/nfloyd
 #         from the Gist comment 2011-07-31 https://gist.github.com/946727
 #
-#   <javabrett>
-#   - Retain space after leading --- and +++, add TAB before (revision 0)
+#	<javabrett>
+#	- Retain space after leading --- and +++, add TAB before (revision 0)
+#	- Use \t instead of spaces before (revision $REV) and (working copy)
 
 # Get the tracking branch (if we're on a branch)
 
@@ -53,8 +54,8 @@ git diff \
     --no-prefix $(git rev-list --date-order --max-count=1 $TRACKING_BRANCH) \
     "$@" |
 sed -e "/--- \/dev\/null/{ N; s|^--- /dev/null\n+++ \(.*\)|--- \1\t(revision 0)\n+++ \1\t(revision 0)|;}" \
-    -e "s/^--- .*/&     (revision $REV)/" \
-    -e "s/^+++ .*/&     (working copy)/" \
+    -e "s/^--- .*/&\t(revision $REV)/" \
+    -e "s/^+++ .*/&\t(working copy)/" \
     -e "s/^diff --git [^[:space:]]*/Index:/" \
     -e "s/^index.*/===================================================================/"
 
