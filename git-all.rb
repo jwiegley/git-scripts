@@ -153,7 +153,7 @@ Main {
     seen     = Set.new
     dirs     = $params[:dir].values * ' '
     # Relies on GNU find's -printf directive
-    find_cmd = "find -H -L #{dirs} -name .git -printf '%p\\n\\c'"
+    find_cmd = "find -H #{dirs} -name .git -printf '%p\\n\\c'"
 
     # This asynchronous usage allows the "find" command to continue producing
     # pathnames while we work on them.  Find.find() would block until all the
