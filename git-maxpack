@@ -1,5 +1,4 @@
 #!/bin/sh
 
 git config pack.compression 9
-git gc --aggressive
-git prune
+git gc --aggressive --prune=now
