@@ -11,7 +11,8 @@
 use Getopt::Long;
 use Git;
 use strict;
-use encoding "utf8";
+use utf8;
+use Encode qw(encode);
 my $Repo          = Git->repository($ENV{"GIT_DIR"} || ".");
 my $Pretty_fmt    = "format:%s";
 my $Reverse_order = 0;
@@ -123,7 +124,7 @@ sub process
 			print &vis_post(&vis_commit($ra, " "));
 		}
 		if ($With_sha) {
-			print $msg, $Color{at}, "──(", $Color{sha}, $mini_sha,
+			print $msg, $Color{at}, encode('UTF-8', "──("), $Color{sha}, $mini_sha,
 			      $Color{at}, ")", $Color{default}, "\n";
 		} else {
 			print $msg, "\n";
@@ -211,7 +212,7 @@ sub ref_print
 		} elsif ($symbol =~ m{^refs/(.*)}s) {
 			print $Color{ref}, $1;
 		}
-		print $Color{at}, "]──", $Color{default};
+		print $Color{at}, encode('UTF-8', "]──"), $Color{default};
 	}
 }
 
@@ -576,7 +577,7 @@ sub vis_post
 		$s .= $f;
 	}
 
-	return $Color{tree}, $s, $Color{default};
+	return $Color{tree}, encode('UTF-8', $s), $Color{default};
 }
 
 sub remove_trailing_blanks
