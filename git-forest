@@ -11,7 +11,7 @@
 use Getopt::Long;
 use Git;
 use strict;
-use encoding "utf8";
+use utf8;
 my $Repo          = Git->repository($ENV{"GIT_DIR"} || ".");
 my $Pretty_fmt    = "format:%s";
 my $Reverse_order = 0;
