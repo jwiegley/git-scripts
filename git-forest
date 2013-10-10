@@ -618,7 +618,6 @@ sub TIEHANDLE
 	my $self  = {};
 
 	open($self->{fh}, ">&STDOUT");
-	binmode $self->{fh}, ":utf8";
 
 	return bless $self, $class;
 }
@@ -637,5 +636,6 @@ sub UNTIE
 	my $fh   = $self->{fh};
 
 	print $fh join($/, reverse split(/\n/s, $self->{saved}));
+	print $fh "\n";
 	undef $self->{saved};
 }
