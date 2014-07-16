@@ -1,4 +1,6 @@
 #!/bin/sh
 
 git add -A
-git ls-files --deleted -z | xargs -0 git rm
+git ls-files --deleted -z | while read file; do
+    git rm "$file"
+done

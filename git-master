@@ -1,0 +1,4 @@
+#!/bin/bash
+git stash
+git co master
+git stash pop
