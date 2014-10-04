@@ -7,19 +7,32 @@
 # dns_check (ahead 1) | (behind 112) origin/master
 # master (ahead 2) | (behind 0) origin/master
 
-tot_diff=0
 
-git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads | \
+TOTAL_DIFFERENCES=0
+CGREEN='\033[1;32m'
+CYELLOW='\033[1;33m'
+CRED='\033[1;31m'
+CEND='\033[0m'
+
+
 while read local remote
 do
     [ -z "$remote" ] && continue
     git rev-list --left-right ${local}...${remote} -- 2>/dev/null >/tmp/git_upstream_status_delta || continue
     LEFT_AHEAD=$(grep -c '^<' /tmp/git_upstream_status_delta)
     RIGHT_AHEAD=$(grep -c '^>' /tmp/git_upstream_status_delta)
-    tot_diff=$LEFT_AHEAD+$RIGHT_AHEAD+$tot_diff
-    echo "$local (ahead $LEFT_AHEAD) | (behind $RIGHT_AHEAD) $remote"
-done
+    TOTAL_DIFFERENCES=$(($LEFT_AHEAD + $RIGHT_AHEAD + $TOTAL_DIFFERENCES))
+    MSG_LEFT_AHEAD="(ahead $LEFT_AHEAD)"
+    MSG_RIGHT_AHEAD="(behind $RIGHT_AHEAD)"
+    if [ "$LEFT_AHEAD" -ne 0 ]; then
+        MSG_LEFT_AHEAD="$CYELLOW$MSG_LEFT_AHEAD$CEND"
+    fi
+    if [ "$RIGHT_AHEAD" -ne 0 ]; then
+        MSG_RIGHT_AHEAD="$CRED$MSG_RIGHT_AHEAD$CEND"
+    fi
+    echo -e "$local $MSG_LEFT_AHEAD | $MSG_RIGHT_AHEAD $remote"
+done < <(git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads)
 
-if [ "$tot_diff" == "0" ]; then
-    echo "Everything is synchronized."
+if [ "$TOTAL_DIFFERENCES" == 0 ]; then
+    echo -e "${CGREEN}Everything is synchronized.$CEND"
 fi
