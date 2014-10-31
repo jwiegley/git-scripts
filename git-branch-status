@@ -1,5 +1,5 @@
 #!/bin/bash
-# git-branch-status DEBUG
+# git-branch-status
 #   * originally                    by http://github.com/jehiah
 #   * "s'all good!" message         by http://github.com/kd35a
 #   * ANSI colors                   by http://github.com/knovoselic
@@ -51,8 +51,8 @@ function set_filter_or_die
 }
 
 if [ $1 ] ; then
-  if [ "$1" == "-h" -o "$1" == "--help" ] ; then echo $USAGE ; exit ;
-  elif [ "$1" == "-a" -o "$1" == "--all" ] ; then
+  if   [ "$1" == "-h" -o "$1" == "--help"   ] ; then echo $USAGE ; exit ;
+  elif [ "$1" == "-a" -o "$1" == "--all"    ] ; then
     readonly SHOW_ALL=1
   elif [ "$1" == "-b" -o "$1" == "--branch" ] ; then
     if [ $2 ] ; then set_filter_or_die $2 ; else branch=$(current_branch) ; fi ;
@@ -89,17 +89,9 @@ declare -a ahead_colors=()
 declare -a behind_colors=()
 
 
-# if [ $SHOW_ALL_REMOTE -eq 1 ] ; then echo "show diffs" ; else echo "no diffs" ; fi ;
-# if [ $SHOW_ALL_LOCAL -eq 1 ] ; then echo "show locals" ; else echo "no locals" ; fi ;
-
-
 # loop over all branches
 while read local remote
 do
-# echo ; echo "$local <-> $remote IN"
-# if [ $branch ] && [ "$branch" != "$local" ] ; then echo "skipping branch '$local'" ; fi ;
-# if [ ! -z "$remote" ] ; then echo "has remote" ; else echo "no remote - bailing" ; fi ;
-
   # filter branches by name
   [ $branch ] && [ "$branch" != "$local" ] && continue
 
@@ -107,12 +99,10 @@ do
   if [ ! -z "$remote" ] ; then
     status=$(git rev-list --left-right ${local}...${remote} -- 2>/dev/null)
     [ $(($?)) -eq 0 ] || continue
-    n_ahead=$(echo $status | tr " " "\n" | grep -c '^<')
+    n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
     n_behind=$(echo $status | tr " " "\n" | grep -c '^>')
     n_differences=$(($n_ahead + $n_behind))
     n_total_differences=$(($n_total_differences + $n_differences))
-
-# echo "SHOW_ALL_REMOTE=$SHOW_ALL_REMOTE n_ahead=$n_ahead n_behind=$n_behind n_total_differences =$n_total_differences"
 
     # filter branches by status
     [ "$SHOW_ALL_REMOTE" -eq 0 -a "$n_differences" -eq 0 ] && continue
@@ -133,10 +123,6 @@ do
   ahead_colors=(  ${ahead_colors[@]}  "$ahead_color"  )
   behind_colors=( ${behind_colors[@]} "$behind_color" )
 
-# echo "$local <-> $remote OUT"
-# echo "col_ws  IN=[ ${#local} ${#n_ahead} ${#n_behind} ${#remote} ]"
-# echo "msg=*$local*$n_ahead*$n_behind*$remote*"
-
   # determine max column widths
   if [ ${#local}    -gt $local_col_w ] ;  then local_col_w=${#local} ;     fi ;
   if [ ${#n_ahead}  -gt $ahead_col_w ] ;  then ahead_col_w=${#n_ahead} ;   fi ;
@@ -145,34 +131,14 @@ do
 
 done < <(git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads)
 
-# echo "n_results=${#local_msgs[@]}"
+
 # compensate for "(ahead )" and "(behind )" to be appended
-ahead_col_w=$(($ahead_col_w + 8))
-behind_col_w=$(($behind_col_w + 10))
+ahead_col_w=$((  $ahead_col_w  + 8  ))
+behind_col_w=$(( $behind_col_w + 10 ))
 
 # pretty print results
 for (( result_n = 0 ; result_n < ${#local_msgs[@]} ; result_n++ ))
 do
-# echo
-
-# pad "(  9 ahead)" like "( 99 ahead)" like "(999 ahead)"
-# ahead_pad_w=$(($ahead_col_w - ${#ahead_msgs[$result_n]} - 8))
-# behind_pad_w=$(($behind_col_w - ${#behind_msgs[$result_n]} - 9))
-# ahead_pad="'%"$ahead_pad_w"s'"
-# behind_pad="'%"$behind_pad_w"s'"
-# # echo "ahead_pad=$ahead_pad ahead_pad_w=$ahead_pad_w"
-# # echo "behind_pad_w=$behind_pad_w"
-
-# ahead_msg=$(printf "(${ahead_msgs[$result_n]} "$ahead_pad"ahead)")
-# behind_msg=$(printf "(${behind_msgs[$result_n]} "$behind_pad"behind)")
-# echo "'$head_msg' head_msg_len=${#head_msg}"
-# echo "'${ahead_msg}' ahead_msg_len=${#ahead_msg}"
-
-#   behind_col_offset=$(($ahead_col_w - ${#ahead_msg} - 8 - $ahead_pad_w))
-#   remote_col_offset=$(($behind_col_w - ${#behind_msg} - 9 - $behind_pad_w))
-# ahead_msg="("$ahead_pad" $ahead_msg ahead)"
-# behind_msg="("$behind_pad"$behind_msg behind)"
-
   # fetch and filter data
   local_msg="${local_msgs[$result_n]}"
   ahead_msg="(ahead ${ahead_msgs[$result_n]})"
@@ -185,46 +151,19 @@ do
   if [ "$ahead_msg"  == "(0 ahead)"  ] ; then ahead_msg="(even)" ;                 fi ;
   if [ "$behind_msg" == "(0 behind)" ] ; then behind_msg="(even)" ;                fi ;
 
-# echo "local_msg='${local_msgs[$result_n]}'"
-# echo "ahead_msg='${ahead_msgs[$result_n]}'"
-# echo "behind_msg='${behind_msgs[$result_n]}'"
-# echo "remote_msgs='${remote_msgs[$result_n]}'"
-
-# echo "local_msg  IN='$local_msg' (${#local_msg})"
-# echo "ahead_msg IN='$ahead_msg' (${#ahead_msg})"
-# echo "behind_msg IN='$behind_msg' (${#behind_msg})"
-# echo "remote_msgs IN='$remote_msg' (${#remote_msg})"
-
-# echo "ahead_color=$ahead_color"
-# echo "behind_color=$behind_color"
-
   # calculate column offsets
   local_col_offset=1
-  ahead_col_offset=$(($local_col_w - ${#local_msg}))
-  behind_col_offset=$(($ahead_col_w - ${#ahead_msg}))
-  remote_col_offset=$(($behind_col_w - ${#behind_msg}))
-  end_col_offset=$(($remote_col_w - ${#remote_msg}))
-
-# echo "local_col_offset =$local_col_w - ${#local_msg} = $ahead_col_offset"
-# echo "ahead_col_offset =$ahead_col_w - ${#ahead_msg} = $behind_col_offset"
-# echo "remote_col_offset=$behind_col_w - ${#behind_msg} = $remote_col_offset"
-# echo "end_col_offset   =$remote_col_w - ${#remote_msg} = $end_col_offset"
-# echo "col_ws OUT=[ $local_col_w $ahead_col_w $behind_col_w $remote_col_w ]"
-# echo "this_w OUT=[ ${#local_msg} ${#ahead_msg} ${#behind_msg} ${#remote_msg} ]"
-# echo "offsets   =[ $ahead_col_offset $behind_col_offset $remote_col_offset $end_col_offset ]"
+  ahead_col_offset=$((  $local_col_w -  ${#local_msg}  ))
+  behind_col_offset=$(( $ahead_col_w -  ${#ahead_msg}  ))
+  remote_col_offset=$(( $behind_col_w - ${#behind_msg} ))
+  end_col_offset=$((    $remote_col_w - ${#remote_msg} ))
 
   # build output messages and print
-  local_msg="%$(($local_col_offset))s $(echo -e $SPACER $local_msg)"
-  ahead_msg="%$(($ahead_col_offset))s $(echo -e $SPACER $ahead_color$ahead_msg$CEND)"
+  local_msg="%$(($local_col_offset))s $(echo -e   $SPACER $local_msg)"
+  ahead_msg="%$(($ahead_col_offset))s $(echo -e   $SPACER $ahead_color$ahead_msg$CEND)"
   behind_msg="%$(($behind_col_offset))s $(echo -e $SPACER $behind_color$behind_msg$CEND)"
   remote_msg="%$(($remote_col_offset))s $(echo -e $SPACER $remote_msg)"
   end_msg="%$(($end_col_offset))s $SPACER"
-
-# echo "local_msg OUT='$local_msg'"
-# echo "ahead_msg OUT='$ahead_msg'"
-# echo "behind_msg OUT='$behind_msg'"
-# echo "remote_msgs OUT='$remote_msg'"
-# echo "msg=*$local_msg}*$ahead_msg}*$behind_msg}*$remote_msg}*"
 
   printf "$local_msg$ahead_msg$behind_msg$remote_msg$end_msg\n"
 done
