@@ -8,13 +8,13 @@
 # this script prints out pretty git branch sync status reports
 
 
-### constants ###
-
-readonly USAGE=<<USAGE
+read -r -d '' USAGE <<-'USAGE'
 usage: git-branch-status
        git-branch-status [-a | --all]
        git-branch-status [-h | --help]
        git-branch-status [-b | --branch [branch-name]] [branch-name]
+
+    examples:
 
     $ git-branch-status
       | dns_check | (ahead 1) | (behind 112) | origin/dns_check |
@@ -41,10 +41,23 @@ usage: git-branch-status
 USAGE
 
 
+### helpers ###
+
+function current_branch() { echo  $(git rev-parse --abbrev-ref HEAD) ; }
+
+function set_filter_or_die
+{
+  if [ "$(current_branch)" == "$1" ] || [ $(git branch | grep -G "^  $1$") ] ; then
+    branch=$1
+  else echo "no such branch: '$1'" ; exit ;
+  fi
+}
+
+
 ### switches ###
 
 if [ $1 ] ; then
-  if   [ "$1" == "-h" -o "$1" == "--help"   ] ; then echo $USAGE ; exit ;
+  if   [ "$1" == "-h" -o "$1" == "--help"   ] ; then echo "$USAGE" ; exit ;
   elif [ "$1" == "-a" -o "$1" == "--all"    ] ; then
     readonly SHOW_ALL=1
   elif [ "$1" == "-b" -o "$1" == "--branch" ] ; then
@@ -53,6 +66,8 @@ if [ $1 ] ; then
   fi
 fi
 
+
+### constants ###
 
 readonly SHOW_ALL_REMOTE=$(($SHOW_ALL + 0)) # also show branches that are up to date
 readonly SHOW_ALL_LOCAL=$(($SHOW_ALL + 0))  # also show branches that have no remote counterpart
@@ -81,19 +96,6 @@ declare -a behind_msgs=()
 declare -a remote_msgs=()
 declare -a ahead_colors=()
 declare -a behind_colors=()
-
-
-### helpers ###
-
-function current_branch() { echo  $(git rev-parse --abbrev-ref HEAD) ; }
-
-function set_filter_or_die
-{
-  if [ "$(current_branch)" == "$1" ] || [ $(git branch | grep -G "^  $1$") ] ; then
-    branch=$1
-  else echo "no such branch: '$1'" ; exit ;
-  fi
-}
 
 
 # loop over all branches
@@ -142,8 +144,8 @@ do
 done < <(git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads)
 
 # compensate for "(ahead )" and "(behind )" to be appended
-ahead_col_w=$((  $ahead_col_w  + 8  ))
-behind_col_w=$(( $behind_col_w + 10 ))
+ahead_col_w=$((  $ahead_col_w  + 8 ))
+behind_col_w=$(( $behind_col_w + 9 ))
 
 # pretty print results
 for (( result_n = 0 ; result_n < ${#local_msgs[@]} ; result_n++ ))
