@@ -43,7 +43,17 @@ USAGE
 
 ### helpers ###
 
-function current_branch() { echo  $(git rev-parse --abbrev-ref HEAD) ; }
+function get_refs
+{
+  echo "`git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads 2> /dev/null`"
+}
+
+function get_status
+{
+  git rev-list --left-right ${local}...${remote} -- 2>/dev/null
+}
+
+function current_branch() { echo $(git rev-parse --abbrev-ref HEAD) ; }
 
 function set_filter_or_die
 {
@@ -106,7 +116,7 @@ do
 
   # parse local<->remote sync status
   if [ $remote ] ; then
-    status=$(git rev-list --left-right ${local}...${remote} -- 2>/dev/null)
+    status=$(get_status)
     [ $(($?)) -eq 0 ] || continue
 
     n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
@@ -141,7 +151,7 @@ do
   if [ ${#n_behind} -gt $behind_col_w ] ; then behind_col_w=${#n_behind} ; fi ;
   if [ ${#remote}   -gt $remote_col_w ] ; then remote_col_w=${#remote} ;   fi ;
 
-done < <(git for-each-ref --format="%(refname:short) %(upstream:short)" refs/heads)
+done < <(get_refs)
 
 # compensate for "(ahead )" and "(behind )" to be appended
 ahead_col_w=$((  $ahead_col_w  + 8 ))
@@ -179,5 +189,7 @@ do
   printf "$local_msg$ahead_msg$behind_msg$remote_msg$end_msg\n"
 done
 
-# print something if no diffs
-if [ "$n_total_differences" == 0 ] ; then echo -e $NO_RESULTS_MSG ; fi ;
+# print something if no diffs (and some branches exist in this dir)
+if [ "$n_total_differences" == 0 -a "$(get_refs)" ]
+then echo -e $NO_RESULTS_MSG
+fi
