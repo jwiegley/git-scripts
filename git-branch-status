@@ -72,7 +72,13 @@ function current_branch
 
 function is_current_branch # (a_branch_name)
 {
-  if [ "$1" == "$(current_branch)" ] ; then echo 1 ; else echo 0 ; fi ;
+  current=$(current_branch)
+  if (($SHOW_DATES))
+  then this_branch=$(get_head_date $1)$1 ; current=$(get_head_date $current)$current ;
+  else this_branch=$1
+  fi
+
+  if [ "$this_branch" == "$current" ] ; then echo 1 ; else echo 0 ; fi ;
 }
 
 function does_branch_exist # (a_branch_name)
@@ -118,7 +124,7 @@ fi
 
 readonly SHOW_ALL_LOCAL=$(($SHOW_ALL  + 0)) # also show branches that have no upstream
 readonly SHOW_ALL_REMOTE=$(($SHOW_ALL + 0)) # also show branches that are up to date
-readonly MAX_COL_W=27
+readonly MAX_COL_W=27                       # should be => 12
 readonly CWHITE='\033[0;37m'
 readonly CGREEN='\033[0;32m'
 readonly CYELLOW='\033[1;33m'
@@ -160,8 +166,7 @@ do
 
   # parse local<->remote sync status
   if [ $remote ] ; then
-    status=$(get_status)
-    [ $(($?)) -eq 0 ] || continue
+    status=$(get_status) ; (($?)) && continue ;
 
     n_behind=$(echo $status | tr " " "\n" | grep -c '^>')
     n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
@@ -169,26 +174,30 @@ do
     n_total_differences=$(($n_total_differences + $n_differences))
 
     # filter branches by status
-    [ "$SHOW_ALL_REMOTE" -eq 0 -a "$n_differences" -eq 0 ] && continue
+    (($SHOW_ALL_REMOTE)) || (($n_differences)) || continue
 
-    # color output
+    # set data for branches with upstream
     local_color=$CDEFAULT
-    if [ "$n_behind" -ne 0 ] ; then behind_color=$CBEHIND ; else behind_color=$CEVEN ; fi ;
-    if [ "$n_ahead"  -ne 0 ] ; then ahead_color=$CAHEAD ;   else ahead_color=$CEVEN ;  fi ;
+    if (($n_behind))
+    then behind_msg="(behind $n_behind)" ; behind_color=$CBEHIND
+    else behind_msg="(even)" ;             behind_color=$CEVEN ;
+    fi
+    if (($n_ahead))
+    then ahead_msg="(ahead $n_ahead)" ; ahead_color=$CAHEAD ;
+    else ahead_msg="(even)" ;           ahead_color=$CEVEN ;
+    fi
     remote_color=$CDEFAULT
-  elif [ "$SHOW_ALL_LOCAL" -eq 1 ] ; then
+  elif (($SHOW_ALL_LOCAL)) ; then
     # dummy data for branches with no upstream
     local_color=$CDEFAULT
-    n_behind="X" ;          behind_color="$CDEFAULT" ;
-    n_ahead="X" ;           ahead_color="$CDEFAULT" ;
-    remote="$NO_UPSTREAM" ; remote_color=$CNOUPSTREAM
+    behind_msg="n/a" ;      behind_color="$CDEFAULT" ;
+    ahead_msg="n/a" ;       ahead_color="$CDEFAULT" ;
+    remote="$NO_UPSTREAM" ; remote_color=$CNOUPSTREAM ;
   else continue
   fi
 
   # populate lists
   local_msg="$(get_head_date $local)$local" ;    local_msg="${local_msg:0:$MAX_COL_W}" ;
-  behind_msg="$n_behind"
-  ahead_msg="$n_ahead"
   remote_msg="$(get_head_date $remote)$remote" ; remote_msg="${remote_msg:0:$MAX_COL_W}" ;
   local_msgs=(    ${local_msgs[@]}    "$local_msg"    )
   behind_msgs=(   ${behind_msgs[@]}   "$behind_msg"   )
@@ -204,39 +213,20 @@ do
   if [ ${#behind_msg} -gt $behind_w ] ; then behind_w=${#behind_msg} ; fi ;
   if [ ${#ahead_msg}  -gt $ahead_w  ] ; then ahead_w=${#ahead_msg} ;   fi ;
   if [ ${#remote_msg} -gt $remote_w ] ; then remote_w=${#remote_msg} ; fi ;
-
 done < <(get_refs)
-
-# compensate width for dates and "(ahead )" and "(behind )" to be appended
-# local_w=$((  $local_w  + 11 ))
-ahead_w=$((  $ahead_w  + 8  ))
-behind_w=$(( $behind_w + 9  ))
-# remote_w=$(( $remote_w + 11 ))
 
 # pretty print results
 for (( result_n = 0 ; result_n < ${#local_msgs[@]} ; result_n++ ))
 do
   # fetch data
-  this_branch=${local_msgs[$result_n]}
-  n_behind=${behind_msgs[$result_n]}
-  n_ahead=${ahead_msgs[$result_n]}
-  remote_branch=${remote_msgs[$result_n]}
+  local_msg=${local_msgs[$result_n]}
+  behind_msg=${behind_msgs[$result_n]}
+  ahead_msg=${ahead_msgs[$result_n]}
+  remote_msg=${remote_msgs[$result_n]}
   local_color="${local_colors[$result_n]}"
   behind_color="${behind_colors[$result_n]}"
   ahead_color="${ahead_colors[$result_n]}"
   remote_color="${remote_colors[$result_n]}"
-
-  # format data representation
-# echo "this_branch=$this_branch current_branch=$(current_branch)" not_current_branch
-  if (($(is_current_branch $this_branch))) ; then star=$STAR ; else star=" " ; fi ;
-  local_msg="$this_branch"
-  behind_msg="(behind $n_behind)"
-  ahead_msg="(ahead $n_ahead)"
-  remote_msg="$remote_branch"
-  if [ "$behind_msg" == "(behind 0)"   ] ; then behind_msg="(even)" ; fi ;
-  if [ "$ahead_msg"  == "(ahead 0)"    ] ; then ahead_msg="(even)" ;  fi ;
-  if [ "$remote_msg" == "$NO_UPSTREAM" ] ; then behind_msg="n/a" ;    fi ;
-  if [ "$remote_msg" == "$NO_UPSTREAM" ] ; then ahead_msg="n/a" ;     fi ;
 
   # calculate column offsets
   local_offset=1
@@ -246,6 +236,7 @@ do
   end_offset=$((    $remote_w - ${#remote_msg} ))
 
   # build output messages and display
+  if (($(is_current_branch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
   local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND)"
   behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
   ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND)"
