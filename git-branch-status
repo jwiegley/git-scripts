@@ -10,47 +10,57 @@
 
 
 read -r -d '' USAGE <<-'USAGE'
-usage: git-branch-status
-       git-branch-status [-a | --all]
-       git-branch-status [-b | --branch] [branch-name]
-       git-branch-status [-d | --dates]
-       git-branch-status [-h | --help]
+usage:
+
+  git-branch-status
+  git-branch-status [-a | --all]
+  git-branch-status [-b | --branch] [branch-name]
+  git-branch-status [-d | --dates]
+  git-branch-status [-h | --help]
+  git-branch-status [-v | --verbose]
 
 examples:
 
-    # show only branches for which upstream HEAD differs from local
-    $ git-branch-status
-      | collab-branch  | (behind 1) | (ahead 2) | origin/collab-branch  |
-      | feature-branch | (behind 0) | (ahead 2) | origin/feature-branch |
-      | master         | (behind 1) | (ahead 0) | origin/master         |
+  # show only branches for which upstream HEAD differs from local
+  $ git-branch-status
+    | collab-branch  | (behind 1) | (ahead 2) | origin/collab-branch  |
+    | feature-branch | (behind 0) | (ahead 2) | origin/feature-branch |
+    | master         | (behind 1) | (ahead 0) | origin/master         |
 
-    # show all branches - even those with no upstream and those up-to-date
-    $ git-branch-status -a
-    $ git-branch-status --all
-      | local-branch   | n/a        | n/a       | (no upstream)         |
-      | master         | (behind 1) | (ahead 0) | origin/master         |
-      | tracked-branch | (even)     | (even)    | origin/tracked-branch |
+  # show all branches - even those with no upstream and those up-to-date
+  $ git-branch-status -a
+  $ git-branch-status --all
+    | local-branch   | n/a        | n/a       | (no upstream)         |
+    | master         | (behind 1) | (ahead 0) | origin/master         |
+    | tracked-branch | (even)     | (even)    | origin/tracked-branch |
 
-    # show the current branch
-    $ git-branch-status -b
-    $ git-branch-status --branch
-      | current-branch | (behind 0) | (ahead 2) | origin/current-branch |
+  # show the current branch
+  $ git-branch-status -b
+  $ git-branch-status --branch
+    | current-branch | (behind 0) | (ahead 2) | origin/current-branch |
 
-    # show a specific branch
-    $ git-branch-status          specific-branch
-    $ git-branch-status -b       specific-branch
-    $ git-branch-status --branch specific-branch
-      | specific-branch | (behind 0) | (ahead 2) | origin/specific-branch |
+  # show a specific branch
+  $ git-branch-status          specific-branch
+  $ git-branch-status -b       specific-branch
+  $ git-branch-status --branch specific-branch
+    | specific-branch | (behind 0) | (ahead 2) | origin/specific-branch |
 
-    # show the timestamp of each HEAD
-    $ git-branch-status -d
-    $ git-branch-status --dates
-      | 1999-12-31:master | (behind 2) | (ahead 0) | 2000-01-01:origin/master |
+  # show the timestamp of each HEAD
+  $ git-branch-status -d
+  $ git-branch-status --dates
+    | 1999-12-31 master | (behind 2) | (ahead 0) | 2000-01-01 origin/master |
 
-    # print this usage message
-    $ git-branch-status -h
-    $ git-branch-status --help
-        "prints this usage message"
+  # print this usage message
+  $ git-branch-status -h
+  $ git-branch-status --help
+      "prints this usage message"
+
+  # show all branches with timestamps (like -a -d)
+  $ git-branch-status -v
+  $ git-branch-status --verbose
+    | 1999-12-31 local   | n/a        | n/a       | (no upstream)             |
+    | 1999-12-31 master  | (behind 1) | (ahead 0) | 2000-01-01 origin/master  |
+    | 1999-12-31 tracked | (even)     | (even)    | 2000-01-01 origin/tracked |
 USAGE
 
 
@@ -99,7 +109,7 @@ function set_filter_or_die # (a_branch_name)
 function get_head_date # (a_commit_ref)
 {
   author_date=$(git log -n 1 --format=format:"%ai" $1 2> /dev/null)
-  (($SHOW_DATES)) && [ "$author_date" ] && echo "${author_date:0:10}:"
+  (($SHOW_DATES)) && [ "$author_date" ] && echo "${author_date:0:10}$JOIN_CHAR"
 }
 
 function get_commit_msg # (a_commit_ref)
@@ -111,11 +121,13 @@ function get_commit_msg # (a_commit_ref)
 ### switches ###
 
 if [ $1 ] ; then
-  if   [ "$1" == "-a" -o "$1" == "--all"    ] ; then readonly SHOW_ALL=1 ;
-  elif [ "$1" == "-b" -o "$1" == "--branch" ] ; then
+  if   [ "$1" == "-a" -o "$1" == "--all"     ] ; then readonly SHOW_ALL=1 ;
+  elif [ "$1" == "-b" -o "$1" == "--branch"  ] ; then
     if [ $2 ] ; then set_filter_or_die $2 ; else branch=$(current_branch) ; fi ;
-  elif [ "$1" == "-d" -o "$1" == "--dates"  ] ; then readonly SHOW_DATES=1 ;
-  elif [ "$1" == "-h" -o "$1" == "--help"   ] ; then echo "$USAGE" ; exit ;
+  elif [ "$1" == "-d" -o "$1" == "--dates"   ] ; then readonly SHOW_DATES=1 ;
+  elif [ "$1" == "-h" -o "$1" == "--help"    ] ; then echo "$USAGE" ; exit ;
+  elif [ "$1" == "-v" -o "$1" == "--verbose" ]
+    then readonly SHOW_ALL=1 ; readonly SHOW_DATES=1 ;
   else set_filter_or_die  $1
   fi
 fi
@@ -222,7 +234,7 @@ done < <(get_refs)
 for (( result_n = 0 ; result_n < ${#local_msgs[@]} ; result_n++ ))
 do
   # fetch data
-  local_msg=${local_msgs[$result_n]}
+  local_msg=$(  echo ${local_msgs[$result_n]}  | sed "$JOIN_REGEX" )
   behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
   ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
   remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
