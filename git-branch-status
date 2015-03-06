@@ -12,10 +12,11 @@
 read -r -d '' USAGE <<-'USAGE'
 usage: git-branch-status
        git-branch-status [-a | --all]
-       git-branch-status [-b | --branch [branch-name]] [branch-name]
+       git-branch-status [-b | --branch] [branch-name]
+       git-branch-status [-d | --dates]
        git-branch-status [-h | --help]
 
-    examples:
+examples:
 
     # show only branches for which upstream HEAD differs from local
     $ git-branch-status
@@ -84,12 +85,12 @@ function is_current_branch # (a_branch_name)
 function does_branch_exist # (a_branch_name)
 {
   is_known_branch=$(git branch | grep -G "^  $1$") # all but current
-  [ $(is_current_branch $1) -o $is_known_branch ] && echo 1 || echo 0
+  [ $(is_current_branch $1) -o "$is_known_branch" ] && echo 1 || echo 0
 }
 
 function set_filter_or_die # (a_branch_name)
 {
-  if [ $(does_branch_exist $1) ]
+  if (($(does_branch_exist $1)))
   then branch=$1
   else echo "no such branch: '$1'" ; exit ;
   fi
