@@ -136,9 +136,11 @@ readonly CAHEAD=$CYELLOW
 readonly CBEHIND=$CRED
 readonly CEVEN=$CGREEN
 readonly CNOUPSTREAM=$CRED
+readonly JOIN_CHAR='_'
+readonly JOIN_REGEX="s/$JOIN_CHAR/ /"
 readonly STAR="*"
 readonly DELIM="|"
-readonly NO_UPSTREAM="(no-upstream)"
+readonly NO_UPSTREAM="(no${JOIN_CHAR}upstream)"
 readonly NO_RESULTS_MSG="Everything is synchronized"
 
 
@@ -180,12 +182,12 @@ do
     # set data for branches with upstream
     local_color=$CDEFAULT
     if (($n_behind))
-    then behind_msg="(behind $n_behind)" ; behind_color=$CBEHIND
-    else behind_msg="(even)" ;             behind_color=$CEVEN ;
+    then behind_msg="(behind$JOIN_CHAR$n_behind)" ; behind_color=$CBEHIND
+    else behind_msg="(even)" ;                      behind_color=$CEVEN ;
     fi
     if (($n_ahead))
-    then ahead_msg="(ahead $n_ahead)" ; ahead_color=$CAHEAD ;
-    else ahead_msg="(even)" ;           ahead_color=$CEVEN ;
+    then ahead_msg="(ahead$JOIN_CHAR$n_ahead)" ; ahead_color=$CAHEAD ;
+    else ahead_msg="(even)" ;                    ahead_color=$CEVEN ;
     fi
     remote_color=$CDEFAULT
   elif (($SHOW_ALL_LOCAL)) ; then
@@ -221,9 +223,9 @@ for (( result_n = 0 ; result_n < ${#local_msgs[@]} ; result_n++ ))
 do
   # fetch data
   local_msg=${local_msgs[$result_n]}
-  behind_msg=${behind_msgs[$result_n]}
-  ahead_msg=${ahead_msgs[$result_n]}
-  remote_msg=${remote_msgs[$result_n]}
+  behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
+  ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
+  remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
   local_color="${local_colors[$result_n]}"
   behind_color="${behind_colors[$result_n]}"
   ahead_color="${ahead_colors[$result_n]}"
