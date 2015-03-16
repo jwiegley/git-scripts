@@ -1,0 +1,25 @@
+#!/bin/bash -e
+
+newbranch=$1
+remote=${2:-origin/master}
+
+if [[ -z $newbranch || -z $remote ]]; then
+    echo usage: git rebranch NAME REMOTE-BRANCH
+    echo
+    echo example: git branch mybranch origin/master
+    echo
+    echo "This preserves current working tree changes in a stash,"
+    echo "then creates a new branch tracking origin/master so that"
+    echo "you can work in a fresh tree."
+    exit 1
+fi
+
+if [[ ! $remote =~ "/" ]]; then
+    echo "The remote argument should be of the form: remote/branch."
+    echo "For example: origin/master"
+    exit 1
+fi
+
+git stash                   # stash away working tree changes
+
+git checkout -b $newbranch -t $remote
