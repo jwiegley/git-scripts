@@ -6,6 +6,10 @@ if [ -f .git/objects/pack/*.pack ]; then
 
   for pack in .git/objects/pack/*.pack; do
     GIT_DIR=/tmp/tmpgit.$$ git unpack-objects < $pack
+    if [ $? -ne 0 ]; then
+      echo "Unpack of $pack failed, aborting"
+      exit 1
+    fi
   done
 
   rsync -a --info=PROGRESS2 --delete /tmp/tmpgit.$$/objects/ .git/objects/
