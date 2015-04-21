@@ -7,6 +7,6 @@ for pack in .git/objects/pack/*.pack; do
     GIT_DIR=/tmp/tmpgit.$$ git unpack-objects < $pack
 done
 
-rsync -a --delete /tmp/tmpgit.$$/objects/ .git/objects/
+rsync -a --info=PROGRESS2 --delete /tmp/tmpgit.$$/objects/ .git/objects/
 
 rm -fr /tmp/tmpgit.$$
