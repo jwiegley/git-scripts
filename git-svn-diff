@@ -25,6 +25,10 @@
 #	<javabrett>
 #	- Retain space after leading --- and +++, add TAB before (revision 0)
 #	- Use \t instead of spaces before (revision $REV) and (working copy)
+#
+#	<javabrett>
+#	- Added support for non-empty git-svn prefix, important now that the
+#	- default --prefix is "origin/" in Git 2.0+.
 
 # Get the tracking branch (if we're on a branch)
 
@@ -38,6 +42,11 @@ case "$TRACKING_BRANCH" in
     URL*)
         TRACKING_BRANCH=$(git config --get svn-remote.svn.fetch |
                           sed -e 's,.*:refs/remotes/,,')
+        ;;
+    *)
+        # GIT_SVN_PREFIX will be origin/ by-default in Git 2.0 or later, or ""
+        GIT_SVN_PREFIX=$(git config --get svn-remote.svn.branches | sed -e 's,.*:refs/remotes/\(.*\)\*$,\1,')
+        TRACKING_BRANCH=${GIT_SVN_PREFIX}${TRACKING_BRANCH}
         ;;
 esac
 
