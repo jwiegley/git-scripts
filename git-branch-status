@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#  git-branch-status - print pretty git branch sync status reports
-#
-#  please direct comments, bug reports, or feature requests to the upstream repo:
+#  please direct comments, bug reports, feature requests, or PRs to the upstream repo:
 #      https://github.com/bill-auger/git-branch-status/issues/
+
+#  git-branch-status - print pretty git branch sync status reports
 #
 #  Copyright 2014      Jehiah Czebotar     <https://github.com/jehiah>
 #  Copyright 2013      Fredrik Strandin    <https://github.com/kd35a>
@@ -21,7 +21,7 @@
 #
 #  You should have received a copy of the GNU General Public License version 3
 #  along with git-branch-status.  If not, see <http://www.gnu.org/licenses/>.
-#
+
 #  credits:
 #   * originally                              by Jehiah Czebotar
 #   * "s'all good!" message                   by Fredrik Strandin
@@ -109,10 +109,10 @@ readonly CEVEN=$CGREEN
 readonly CNOUPSTREAM=$CRED
 readonly CNOLOCAL=$CRED
 readonly HRULE_CHAR='-'
-readonly JOIN_CHAR='_'
+readonly JOIN_CHAR='~'
 readonly JOIN_REGEX="s/$JOIN_CHAR/ /"
-readonly STAR="*"
-readonly DELIM="|"
+readonly STAR='*'
+readonly DELIM='|'
 readonly NO_UPSTREAM="(no${JOIN_CHAR}upstream)"
 readonly NO_LOCAL="(no${JOIN_CHAR}local)"
 readonly NO_RESULTS_MSG="Everything is synchronized"
@@ -312,10 +312,11 @@ function printReportLine
 
 function printReport # (header)
 {
+  header=$1
   n_notable_differences=${#local_msgs[@]}
 
   # pretty print results
-  printf "\n  $1\n"
+  printf "\n  $header\n"
   if [ "$n_notable_differences" != "0" ]
   then rule_w=$(($local_w+$behind_w+$ahead_w+$remote_w+13))
        printHRule $rule_w
