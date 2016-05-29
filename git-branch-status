@@ -136,58 +136,70 @@ declare -a remote_colors=()
 
 ### helpers ###
 
-function get_refs # (a_refs_dir)
+function GetRefs # (a_refs_dir)
 {
   git for-each-ref --format="%(refname:short) %(upstream:short)" $1 2> /dev/null
 }
 
-function get_status
+function GetLocalRefs
+{
+  GetRefs refs/heads
+}
+
+function GetRemoteRefs # (remote_repo)
+{
+  remote_repo=$1
+
+  GetRefs refs/remotes/$remote_repo
+}
+
+function GetStatus
 {
   git rev-list --left-right ${local}...${remote} -- 2>/dev/null
 }
 
-function current_branch
+function GetCurrentBranch
 {
   git rev-parse --abbrev-ref HEAD
 }
 
-function is_current_branch # (a_branch_name)
+function IsCurrentBranch # (a_branch_name)
 {
-  current=$(current_branch)
+  current=$(GetCurrentBranch)
   if (($SHOW_DATES))
-  then this_branch=$(get_head_date $1)$1 ; current=$(get_head_date $current)$current ;
+  then this_branch=$(GetHeadDate $1)$1 ; current=$(GetHeadDate $current)$current ;
   else this_branch=$1
   fi
 
   if [ "$this_branch" == "$current" ] ; then echo 1 ; else echo 0 ; fi ;
 }
 
-function does_branch_exist # (a_branch_name)
+function DoesBranchExist # (a_branch_name)
 {
   is_known_branch=$(git branch | grep -G "^  $1$") # all but current
-  [ $(is_current_branch $1) -o "$is_known_branch" ] && echo 1 || echo 0
+  [ $(IsCurrentBranch $1) -o "$is_known_branch" ] && echo 1 || echo 0
 }
 
-function set_filter_or_die # (a_branch_name)
+function SetFilterOrDie # (a_branch_name)
 {
-  if (($(does_branch_exist $1)))
+  if (($(DoesBranchExist $1)))
   then branch=$1
   else echo "no such branch: '$1'" ; exit ;
   fi
 }
 
-function get_head_date # (a_commit_ref)
+function GetHeadDate # (a_commit_ref)
 {
   author_date=$(git log -n 1 --format=format:"%ai" $1 2> /dev/null)
   (($SHOW_DATES)) && [ "$author_date" ] && echo "${author_date:0:10}$JOIN_CHAR"
 }
 
-function get_commit_msg # (a_commit_ref)
+function GetCommitMsg # (a_commit_ref)
 {
   git log -n 1 --format=format:"%s" $1
 }
 
-function printHRule # (rule_w)
+function PrintHRule # (rule_w)
 {
   printf "  $(head -c $1 < /dev/zero | tr '\0' $HRULE_CHAR)\n"
 }
@@ -195,7 +207,7 @@ function printHRule # (rule_w)
 
 ### business ###
 
-function reset
+function Reset
 {
   n_total_differences=0
   local_w=0
@@ -212,11 +224,11 @@ function reset
   remote_colors=()
 }
 
-function report # (a_local_branch_name a_remote_branch_name)
+function GenerateReport # (a_local_branch_name a_remote_branch_name)
 {
   local=$1
   remote=$2
-  does_local_exist=$(does_branch_exist $local_branch)
+  does_local_exist=$(DoesBranchExist $local_branch)
 
   # filter branches per CLI arg
   [ $branch ] && [ "$branch" != "$local" ] && continue
@@ -226,7 +238,7 @@ function report # (a_local_branch_name a_remote_branch_name)
 
   # parse local<->remote sync status
   if (($does_local_exist)) && [ $remote ] ; then
-    status=$(get_status) ; (($?)) && continue ;
+    status=$(GetStatus) ; (($?)) && continue ;
 
     n_behind=$(echo $status | tr " " "\n" | grep -c '^>')
     n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
@@ -263,8 +275,8 @@ function report # (a_local_branch_name a_remote_branch_name)
   fi
 
   # populate lists
-  local_msg="$(get_head_date $local)$local" ;    local_msg="${local_msg:0:$MAX_COL_W}" ;
-  remote_msg="$(get_head_date $remote)$remote" ; remote_msg="${remote_msg:0:$MAX_COL_W}" ;
+  local_msg="$(GetHeadDate $local)$local" ;    local_msg="${local_msg:0:$MAX_COL_W}" ;
+  remote_msg="$(GetHeadDate $remote)$remote" ; remote_msg="${remote_msg:0:$MAX_COL_W}" ;
   local_msgs=(    ${local_msgs[@]}    "$local_msg"    )
   behind_msgs=(   ${behind_msgs[@]}   "$behind_msg"   )
   ahead_msgs=(    ${ahead_msgs[@]}    "$ahead_msg"    )
@@ -281,7 +293,7 @@ function report # (a_local_branch_name a_remote_branch_name)
   if [ ${#remote_msg} -gt $remote_w ] ; then remote_w=${#remote_msg} ; fi ;
 }
 
-function printReportLine
+function PrintReportLine
 {
   # fetch data
   local_msg=$(  echo ${local_msgs[$result_n]}  | sed "$JOIN_REGEX" )
@@ -301,7 +313,7 @@ function printReportLine
   end_offset=$((    $remote_w - ${#remote_msg} ))
 
   # build output messages and display
-  if (($(is_current_branch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
+  if (($(IsCurrentBranch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
   local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND)"
   behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
   ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND)"
@@ -310,7 +322,7 @@ function printReportLine
   printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
 }
 
-function printReport # (header)
+function PrintReport # (header)
 {
   header=$1
   n_notable_differences=${#local_msgs[@]}
@@ -319,22 +331,22 @@ function printReport # (header)
   printf "\n  $header\n"
   if [ "$n_notable_differences" != "0" ]
   then rule_w=$(($local_w+$behind_w+$ahead_w+$remote_w+13))
-       printHRule $rule_w
+       PrintHRule $rule_w
        for (( result_n = 0 ; result_n < $n_notable_differences ; result_n++ ))
-       do printReportLine
+       do PrintReportLine
        done
-       printHRule $rule_w
+       PrintHRule $rule_w
   fi
 
   # print something if no diffs
-  if [ "$n_total_differences" == "0" -a "$(get_refs)" ]
+  if [ "$n_total_differences" == "0" -a "$(GetRefs)" ]
   then rule_w=$((${#NO_RESULTS_MSG}+4))
-       printHRule $rule_w
+       PrintHRule $rule_w
        echo -e "  $DELIM $CEVEN$NO_RESULTS_MSG$CEND $DELIM"
-       printHRule $rule_w
+       PrintHRule $rule_w
   fi
 
-  reset
+  Reset
 }
 
 
@@ -349,13 +361,13 @@ if [ $1 ] ; then
   show_all_remote=0
   if   [ "$1" == "-a" -o "$1" == "--all"     ] ; then show_all=1 ;
   elif [ "$1" == "-b" -o "$1" == "--branch"  ] ; then
-    if [ $2 ] ; then set_filter_or_die $2 ; else branch=$(current_branch) ; fi ;
+    if [ $2 ] ; then SetFilterOrDie $2 ; else branch=$(GetCurrentBranch) ; fi ;
   elif [ "$1" == "-d" -o "$1" == "--dates"   ] ; then show_dates=1 ;
   elif [ "$1" == "-h" -o "$1" == "--help"    ] ; then echo "$USAGE" ; exit ;
   elif [ "$1" == "-r" -o "$1" == "--remotes" ] ; then show_all_remote=1 ;
   elif [ "$1" == "-v" -o "$1" == "--verbose" ] ; then show_all=1 ;
                                                       show_dates=1 ;
-  else set_filter_or_die $1
+  else SetFilterOrDie $1
   fi
   readonly SHOW_DATES=$show_dates
   readonly SHOW_ALL=$show_all
@@ -366,8 +378,8 @@ fi
 
 
 # compare local branches status to their upstreams
-while read local upstream ; do report $local $upstream ; done < <(get_refs refs/heads) ;
-printReport "local <-> upstream"
+while read local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
+PrintReport "local <-> upstream"
 
 
 (($SHOW_ALL_REMOTE)) || exit
@@ -380,8 +392,8 @@ do
     local_branch=${remote_branch#$remote_repo/}
     upstream_branch=`git rev-parse --abbrev-ref $local_branch@{upstream} 2> /dev/null`
 
-    [ "$remote_branch" != "$upstream_branch" ] && report $local_branch $remote_branch
-  done < <(get_refs refs/remotes/$remote_repo)
+    [ "$remote_branch" != "$upstream_branch" ] && GenerateReport $local_branch $remote_branch
+  done < <(GetRemoteRefs $remote_repo)
 
-  printReport "local <-> $remote_repo"
+  PrintReport "local <-> $remote_repo"
 done
