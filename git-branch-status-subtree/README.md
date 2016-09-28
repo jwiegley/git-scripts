@@ -67,5 +67,9 @@ EXAMPLES:
     | 1999-12-31 tracked | (even)     | (even) | 2000-01-01 origin/tracked |
 ```
 
+_NOTE: please direct comments, bug reports, feature requests, or PRs to the upstream repo:
+[https://github.com/bill-auger/git-branch-status/issues/][issues]_
 
-[scrot]: http://bill-auger.github.io/git-branch-status-scrot.png "git-branch-status screenshot"
+
+[scrot]:  http://bill-auger.github.io/git-branch-status-scrot.png "git-branch-status screenshot"
+[issues]: https://github.com/bill-auger/git-branch-status/issues/
