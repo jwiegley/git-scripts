@@ -1,0 +1,2 @@
+#!/bin/bash
+git subtree pull --prefix $1 ext/$(basename $1) master --squash
