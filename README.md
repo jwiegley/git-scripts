@@ -1,5 +1,8 @@
-# git-branch-status
-A BASH script that prints out pretty git branch sync status reports
+# git-branch-status - print pretty git branch sync status reports
+
+By default, the `git-branch-status` command shows the divergence relationship between branches for which the upstream differs from it's local counterpart.
+
+A number of command-line switches exist selecting various output modes to compare any or all local or remote branches.
 
 ![git-branch-status screenshot][scrot]
 
@@ -16,13 +19,13 @@ USAGE:
 
 EXAMPLES:
 
-  # show only branches for which upstream HEAD differs from local
+  # show only branches for which upstream differs from local
   $ git-branch-status
     | collab-branch  | (behind 1) | (ahead 2) | origin/collab-branch  |
     | feature-branch | (even)     | (ahead 2) | origin/feature-branch |
     | master         | (behind 1) | (even)    | origin/master         |
 
-  # show all branches - even those with no upstream or no local and those up-to-date
+  # show all branches - including those up-to-date, with no upstream, or not checked-out
   $ git-branch-status -a
   $ git-branch-status --all
     | master         | (even)     | (ahead 1) | origin/master             |
@@ -53,11 +56,11 @@ EXAMPLES:
   $ git-branch-status --help
       "prints this usage message"
 
-  # show all remote branches - even those with no local
+  # show all remote branches - including those not checked-out
   $ git-branch-status -r
   $ git-branch-status --remotes
-    | master         | (behind 1) | (even) | a-remote/master           |
-    | (no local)     | n/a        | n/a    | a-remote/untracked-branch |
+    | master     | (behind 1) | (even) | a-remote/master           |
+    | (no local) | n/a        | n/a    | a-remote/untracked-branch |
 
   # show all branches with timestamps (like -a -d)
   $ git-branch-status -v
@@ -67,9 +70,11 @@ EXAMPLES:
     | 1999-12-31 tracked | (even)     | (even) | 2000-01-01 origin/tracked |
 ```
 
-_NOTE: please direct comments, bug reports, feature requests, or PRs to the upstream repo:
-[https://github.com/bill-auger/git-branch-status/issues/][issues]_
+_NOTE: please direct comments, bug reports, feature requests, or PRs to one of the upstream repos:_
+* [https://github.com/bill-auger/git-branch-status/issues/][github-issues]
+* [https://notabug.org/bill-auger/git-branch-status/issues/][notabug-issues]
 
 
-[scrot]:  http://bill-auger.github.io/git-branch-status-scrot.png "git-branch-status screenshot"
-[issues]: https://github.com/bill-auger/git-branch-status/issues/
+[scrot]:          http://bill-auger.github.io/git-branch-status-scrot.png "git-branch-status screenshot"
+[github-issues]:  https://github.com/bill-auger/git-branch-status/issues/
+[notabug-issues]: https://notabug.org/bill-auger/git-branch-status/issues/
