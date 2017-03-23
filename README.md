@@ -2,9 +2,34 @@
 
 By default, the `git-branch-status` command shows the divergence relationship between branches for which the upstream differs from it's local counterpart.
 
-A number of command-line switches exist selecting various output modes to compare any or all local or remote branches.
+A number of command-line switches exist, selecting various reports that compare any or all local or remote branches.
+
 
 ![git-branch-status screenshot][scrot]
+
+
+#### Notes regarding the screenshot above:
+
+* This is showing the exhaustive '--all' report. Other reports are constrained (see 'USAGE' below).
+* The "local <-> upstream" section is itemizing all local branches. In this instance:
+  * The local branch 'deleteme' has no remote tracking branch.
+  * The local branch 'kd35a' is tracking remote branch 'kd35a/master'.
+  * The local branch 'knovoselic' is tracking remote branch 'knovoselic/master'.
+  * The local branch 'master' is tracking remote branch 'origin/master'.
+* The "local <-> kd35a" section is itemizing all branches on the 'kd35a' remote. In this instance:
+  * The local branch 'master' is 2 commits behind and 24 commits ahead of the remote branch 'kd35a/master'.
+* The "local <-> knovoselic" section is itemizing all branches on the 'knovoselic' remote. In this instance:
+  * The local branch 'master' is 4 commits behind and 24 commits ahead of the remote branch 'knovoselic/master'.
+* The "local <-> origin" section is itemizing all branches on the 'origin' remote. In this instance:
+  * The remote branch 'origin/delete-me' is not checked-out locally.
+  * The remote branch 'origin/master' is tracked by the local branch 'master'.
+* The asterisks to the left of local 'master' branch names indicate the current working branch.
+* The blue branch names indicate a tracking relationship between a local and it's upstream branch.
+* The "local <-> upstream" section relates tracking branches while remote-specific sections relate identically named branches. This distinction determines the semantics of the green "Everything is synchronized" message.
+  * In the "local <-> upstream" section, this indicates that all local branches which are tracking an upstream are up-to-date with their respective upstream counterparts.
+  * In remote-specific sections, this indicates that all local branches which have the same name as some branch on this remote are up-to-date with that remote branch.
+  * In single branch reports, this indicates that the local branch is up-to-date with it's upstream counterpart if it is tracking an upstream; otherwise this will always be shown.
+
 
 ```
 USAGE:
@@ -69,6 +94,7 @@ EXAMPLES:
     | 1999-12-31 master  | (behind 1) | (even) | 2000-01-01 origin/master  |
     | 1999-12-31 tracked | (even)     | (even) | 2000-01-01 origin/tracked |
 ```
+
 
 _NOTE: please direct comments, bug reports, feature requests, or PRs to one of the upstream repos:_
 * [https://github.com/bill-auger/git-branch-status/issues/][github-issues]
