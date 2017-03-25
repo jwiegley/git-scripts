@@ -12,7 +12,7 @@ A number of command-line switches exist, selecting various reports that compare 
 
 * This is showing the exhaustive '--all' report. Other reports are constrained (see 'USAGE' below).
 * The "local <-> upstream" section is itemizing all local branches. In this instance:
-  * The local branch 'deleteme' has no remote tracking branch.
+  * The local branch 'deleteme' is not tracking any remote branch.
   * The local branch 'kd35a' is tracking remote branch 'kd35a/master'.
   * The local branch 'knovoselic' is tracking remote branch 'knovoselic/master'.
   * The local branch 'master' is tracking remote branch 'origin/master'.
@@ -23,24 +23,27 @@ A number of command-line switches exist, selecting various reports that compare 
 * The "local <-> origin" section is itemizing all branches on the 'origin' remote. In this instance:
   * The remote branch 'origin/delete-me' is not checked-out locally.
   * The remote branch 'origin/master' is tracked by the local branch 'master'.
-* The asterisks to the left of local 'master' branch names indicate the current working branch.
+* The asterisks to the left of the local 'master' branch names indicate the current working branch.
 * The blue branch names indicate a tracking relationship between a local and it's upstream branch.
-* The "local <-> upstream" section relates tracking branches while remote-specific sections relate identically named branches. This distinction determines the semantics of the green "Everything is synchronized" message.
-  * In the "local <-> upstream" section, this indicates that all local branches which are tracking an upstream are up-to-date with their respective upstream counterparts.
-  * In remote-specific sections, this indicates that all local branches which have the same name as some branch on this remote are up-to-date with that remote branch.
-  * In single branch reports, this indicates that the local branch is up-to-date with it's upstream counterpart if it is tracking an upstream; otherwise this will always be shown.
+* The "local <-> upstream" section relates tracking branches while remote-specific sections relate identically named branches. This distinction determines the semantics of the green "... synchronized" messages.
+  * In the "local <-> upstream" section, this indicates that all local branches which are tracking an upstream are synchronized with their respective upstream counterparts.
+  * In remote-specific sections, this indicates that all local branches which have the same name as some branch on this remote are synchronized with that remote branch.
+  * In single branch reports, this indicates that the local branch is tracking an upstream branch and is synchronized with it's upstream counterpart.
+  * In arbitrary branch comparison reports, this indicates that the two compared branches are synchronized with each other.
 
 
 ```
 USAGE:
 
   git-branch-status
-  git-branch-status [-a | --all]
-  git-branch-status [-b | --branch] [branch-name]
-  git-branch-status [-d | --dates]
-  git-branch-status [-h | --help]
-  git-branch-status [-r | --remotes]
-  git-branch-status [-v | --verbose]
+  git-branch-status [ base-branch-name compare-branch-name ]
+  git-branch-status [ -a | --all ]
+  git-branch-status [ -b | --branch ] [filter-branch-name]
+  git-branch-status [ -d | --dates ]
+  git-branch-status [ -h | --help ]
+  git-branch-status [ -r | --remotes ]
+  git-branch-status [ -v | --verbose ]
+
 
 EXAMPLES:
 
@@ -50,7 +53,13 @@ EXAMPLES:
     | feature-branch | (even)     | (ahead 2) | origin/feature-branch |
     | master         | (behind 1) | (even)    | origin/master         |
 
-  # show all branches - including those up-to-date, with no upstream, or not checked-out
+  # compare two arbitrary branches (either local and either remote)
+  $ git-branch-status local-arbitrary-branch fork/arbitrary-branch
+    | local-arbitrary-branch | (even)     | (ahead 1) | fork/arbitrary-branch  |
+  $ git-branch-status fork/arbitrary-branch local-arbitrary-branch
+    | fork/arbitrary-branch  | (behind 1) | (even)    | local-arbitrary-branch |
+
+  # show all branches - including those synchronized, with no upstream, or not checked-out
   $ git-branch-status -a
   $ git-branch-status --all
     | master         | (even)     | (ahead 1) | origin/master             |
