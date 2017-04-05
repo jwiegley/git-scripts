@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+git checkout master
+git pull --ff-only
+git checkout -
+git rebase master
