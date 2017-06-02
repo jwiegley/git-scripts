@@ -203,7 +203,7 @@ function IsCurrentBranch # (branch_name)
 function IsLocalBranch # (branch_name)
 {
   branch=$1
-  is_local_branch=$(git branch -a | grep -P "^(?:\*| ) $branch$")
+  is_local_branch=$(git branch -a | grep -E "^.* $branch$")
 
   [ "$is_local_branch" ] && echo 1 || echo 0
 }
@@ -219,7 +219,7 @@ function IsTrackedBranch # (base_branch_name compare_branch_name)
 function DoesBranchExist # (branch_name)
 {
   branch=$1
-  is_known_branch=$(git branch -a | grep -P "^(?:\*| ) (remotes\/)?$branch$")
+  is_known_branch=$(git branch -a | grep -E "^.* (remotes\/)?$branch$")
 
   [ "$is_known_branch" ] && echo 1 || echo 0
 }
