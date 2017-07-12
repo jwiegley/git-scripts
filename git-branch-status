@@ -20,11 +20,10 @@
 #  along with git-branch-status.  If not, see <http://www.gnu.org/licenses/>.
 
 #  credits:
-#   * original `git rev-list` grepping                 by Jehiah Czebotar
-#   * "s'all good!" message                            by Fredrik Strandin
-#   * ANSI colors                                      by Kristijan Novoselić
-#   * formatting, filters, switches,
-#     usage, dates, remotes, and arbitrary branches    by bill-auger
+#   * original `git rev-list` grepping - by Jehiah Czebotar
+#   * "s'all good!" message            - by Fredrik Strandin
+#   * ANSI colors                      - by Kristijan Novoselić
+#   * various features and maintenance - by bill-auger
 
 #  please direct comments, bug reports, feature requests, or PRs to one of the upstream repos:
 #    * https://github.com/bill-auger/git-branch-status/issues/
@@ -40,6 +39,7 @@ USAGE:
   git-branch-status [ -b | --branch ] [filter-branch-name]
   git-branch-status [ -d | --dates ]
   git-branch-status [ -h | --help ]
+  git-branch-status [ -l | --local ]
   git-branch-status [ -r | --remotes ]
   git-branch-status [ -v | --verbose ]
 
@@ -58,7 +58,7 @@ EXAMPLES:
   $ git-branch-status fork/arbitrary-branch local-arbitrary-branch
     | fork/arbitrary-branch  | (behind 1) | (even)    | local-arbitrary-branch |
 
-  # show all branches - including those up-to-date, with no upstream, or not checked-out
+  # show all branches - including those synchronized, non-tracking, or not checked-out
   $ git-branch-status -a
   $ git-branch-status --all
     | master         | (even)     | (ahead 1) | origin/master             |
@@ -88,6 +88,13 @@ EXAMPLES:
   $ git-branch-status -h
   $ git-branch-status --help
       "prints this usage message"
+
+  # show all local branches - including those synchronized or non-tracking
+  $ git-branch-status -l
+  $ git-branch-status --local
+    | master         | (even)     | (ahead 1) | origin/master             |
+    | tracked-branch | (even)     | (even)    | origin/tracked-branch     |
+    | local-branch   | n/a        | n/a       | (no upstream)             |
 
   # show all remote branches - including those not checked-out
   $ git-branch-status -r
@@ -415,6 +422,7 @@ case "$1" in
   '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
   '-d'|'--dates'   ) show_dates=1                                              ;;
   '-h'|'--help'    ) echo "$USAGE" ; exit                                      ;;
+  '-l'|'--local'   ) show_all_local=1 ; show_all_upstream=1 ;                  ;;
   '-r'|'--remotes' ) show_all_remote=1                                         ;;
   '-v'|'--verbose' ) show_all=1 ; show_dates=1                                 ;;
   *                ) branch_a="$1" branch_b="$2"                               ;;

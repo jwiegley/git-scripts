@@ -41,6 +41,7 @@ USAGE:
   git-branch-status [ -b | --branch ] [filter-branch-name]
   git-branch-status [ -d | --dates ]
   git-branch-status [ -h | --help ]
+  git-branch-status [ -l | --local ]
   git-branch-status [ -r | --remotes ]
   git-branch-status [ -v | --verbose ]
 
@@ -59,7 +60,7 @@ EXAMPLES:
   $ git-branch-status fork/arbitrary-branch local-arbitrary-branch
     | fork/arbitrary-branch  | (behind 1) | (even)    | local-arbitrary-branch |
 
-  # show all branches - including those synchronized, with no upstream, or not checked-out
+  # show all branches - including those synchronized, non-tracking, or not checked-out
   $ git-branch-status -a
   $ git-branch-status --all
     | master         | (even)     | (ahead 1) | origin/master             |
@@ -89,6 +90,13 @@ EXAMPLES:
   $ git-branch-status -h
   $ git-branch-status --help
       "prints this usage message"
+
+  # show all local branches - including those synchronized or non-tracking
+  $ git-branch-status -l
+  $ git-branch-status --local
+    | master         | (even)     | (ahead 1) | origin/master             |
+    | tracked-branch | (even)     | (even)    | origin/tracked-branch     |
+    | local-branch   | n/a        | n/a       | (no upstream)             |
 
   # show all remote branches - including those not checked-out
   $ git-branch-status -r
