@@ -113,7 +113,9 @@ USAGE_MSG
 
 ### constants ###
 
-readonly MAX_COL_W=27 # should be >= 12
+readonly INNER_PADDING_W=13 # '| ' + ' | ' + ' | ' + ' | ' + ' |'
+readonly MARGIN_PAD_W=2
+readonly ALL_PADDING_W=$(($INNER_PADDING_W + ($MARGIN_PAD_W * 2)))
 readonly CWHITE='\033[0;37m'
 readonly CRED='\033[0;31m'
 readonly CGREEN='\033[0;32m'
@@ -136,7 +138,7 @@ readonly NO_UPSTREAM="(no${JOIN_CHAR}upstream)"
 readonly NO_LOCAL="(no${JOIN_CHAR}local)"
 readonly LOCALS_SYNCED_MSG="All tracking branches are synchronized with their upstreams"
 readonly BRANCH_SYNCED_MSG="This tracking branch is synchronized with it's upstream"
-readonly REMOTES_SYNCED_MSG="All remote branches with identically named local branches are synchronized with them"
+readonly REMOTES_SYNCED_MSG="All identically named remote branches are synchronized"
 readonly UNTRACKED_SYNCHED_MSG="These branches are synchronized"
 
 
@@ -248,7 +250,7 @@ function GetCommitMsg # (commit_ref)
 
 function PrintHRule # (rule_width)
 {
-  printf "  $(head -c $1 < /dev/zero | tr '\0' $HRULE_CHAR)\n"
+  printf "%$(($MARGIN_PAD_W))s$(head -c $1 < /dev/zero | tr '\0' $HRULE_CHAR)\n"
 }
 
 
@@ -325,10 +327,10 @@ function GenerateReport # (local_branch_name remote_branch_name)
        remote_color=$CDEFAULT
   else return
   fi
+  local_msg="$(AppendHeadDate $base_branch)"
+  remote_msg="$(AppendHeadDate $compare_branch)"
 
   # populate lists
-  local_msg="$(AppendHeadDate $base_branch)"     ; local_msg="${local_msg:0:$MAX_COL_W}"   ;
-  remote_msg="$(AppendHeadDate $compare_branch)" ; remote_msg="${remote_msg:0:$MAX_COL_W}" ;
   local_msgs=(    ${local_msgs[@]}    "$local_msg"    )
   behind_msgs=(   ${behind_msgs[@]}   "$behind_msg"   )
   ahead_msgs=(    ${ahead_msgs[@]}    "$ahead_msg"    )
@@ -338,7 +340,7 @@ function GenerateReport # (local_branch_name remote_branch_name)
   ahead_colors=(  ${ahead_colors[@]}  "$ahead_color"  )
   remote_colors=( ${remote_colors[@]} "$remote_color" )
 
-  # determine max column widths
+  # determine uniform column widths
   if [ ${#local_msg}  -gt $local_w  ] ; then local_w=${#local_msg}   ; fi ;
   if [ ${#behind_msg} -gt $behind_w ] ; then behind_w=${#behind_msg} ; fi ;
   if [ ${#ahead_msg}  -gt $ahead_w  ] ; then ahead_w=${#ahead_msg}   ; fi ;
@@ -354,10 +356,22 @@ function PrintReport # (table_header_line no_results_msg)
 
   !(($n_notable_differences)) && !(($all_in_sync)) && return
 
+  # truncate column widths to fit
+  current_tty_w=$(($(stty -F /dev/tty size | cut -d ' ' -f2)))
+  available_w=$(($(($current_tty_w - $ahead_w - $behind_w - $ALL_PADDING_W))))
+  while (($local_w + $remote_w > $available_w))
+  do if   (($local_w > $remote_w))
+     then local_w=$(($local_w - 1))
+     elif (($remote_w > $local_w))
+     then remote_w=$(($remote_w - 1))
+     else local_w=$(($local_w - 1)) ; remote_w=$(($remote_w - 1)) ;
+     fi
+  done
+
   # pretty print results
   printf "\n  $header\n"
   if (($n_notable_differences))
-  then rule_w=$(($local_w+$behind_w+$ahead_w+$remote_w+13))
+  then rule_w=$(($local_w + $behind_w + $ahead_w + $remote_w + $INNER_PADDING_W))
 
        PrintHRule $rule_w
        for (( result_n = 0 ; result_n < $n_notable_differences ; result_n++ ))
@@ -368,7 +382,7 @@ function PrintReport # (table_header_line no_results_msg)
 
   # print synchronized message if all compared upstreams had no diffs
   if (($all_in_sync))
-  then rule_w=$((${#no_results_msg}+4))
+  then rule_w=$((${#no_results_msg} + 4))
 
        PrintHRule $rule_w
        echo -e "  $DELIM $CEVEN$no_results_msg$CEND $DELIM"
@@ -385,6 +399,8 @@ function PrintReportLine
   behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
   ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
   remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
+  local_msg="${local_msg:0:$local_w}"   ;
+  remote_msg="${remote_msg:0:$remote_w}" ;
   local_color="${local_colors[$result_n]}"
   behind_color="${behind_colors[$result_n]}"
   ahead_color="${ahead_colors[$result_n]}"
