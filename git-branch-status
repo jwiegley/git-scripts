@@ -345,35 +345,6 @@ function GenerateReport # (local_branch_name remote_branch_name)
   if [ ${#remote_msg} -gt $remote_w ] ; then remote_w=${#remote_msg} ; fi ;
 }
 
-function PrintReportLine
-{
-  # fetch data
-  local_msg=$(  echo ${local_msgs[$result_n]}  | sed "$JOIN_REGEX" )
-  behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
-  ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
-  remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
-  local_color="${local_colors[$result_n]}"
-  behind_color="${behind_colors[$result_n]}"
-  ahead_color="${ahead_colors[$result_n]}"
-  remote_color="${remote_colors[$result_n]}"
-
-  # calculate column offsets
-  local_offset=1
-  behind_offset=$(( $local_w  - ${#local_msg}  ))
-  ahead_offset=$((  $behind_w - ${#behind_msg} ))
-  remote_offset=$(( $ahead_w  - ${#ahead_msg}  ))
-  end_offset=$((    $remote_w - ${#remote_msg} ))
-
-  # build output messages and display
-  if (($(IsCurrentBranch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
-  local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND)"
-  behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
-  ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND)"
-  remote_msg="%$(( $remote_offset ))s $(    echo -e $DELIM $remote_color$remote_msg$CEND)"
-  end_msg="%$((    $end_offset    ))s $DELIM"
-  printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
-}
-
 function PrintReport # (table_header_line no_results_msg)
 {
   header=$1
@@ -405,6 +376,35 @@ function PrintReport # (table_header_line no_results_msg)
   fi
 
   Reset
+}
+
+function PrintReportLine
+{
+  # fetch data
+  local_msg=$(  echo ${local_msgs[$result_n]}  | sed "$JOIN_REGEX" )
+  behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
+  ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
+  remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
+  local_color="${local_colors[$result_n]}"
+  behind_color="${behind_colors[$result_n]}"
+  ahead_color="${ahead_colors[$result_n]}"
+  remote_color="${remote_colors[$result_n]}"
+
+  # calculate column offsets
+  local_offset=1
+  behind_offset=$(( $local_w  - ${#local_msg}  ))
+  ahead_offset=$((  $behind_w - ${#behind_msg} ))
+  remote_offset=$(( $ahead_w  - ${#ahead_msg}  ))
+  end_offset=$((    $remote_w - ${#remote_msg} ))
+
+  # build output messages and display
+  if (($(IsCurrentBranch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
+  local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND)"
+  behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
+  ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND)"
+  remote_msg="%$(( $remote_offset ))s $(    echo -e $DELIM $remote_color$remote_msg$CEND)"
+  end_msg="%$((    $end_offset    ))s $DELIM"
+  printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
 }
 
 
