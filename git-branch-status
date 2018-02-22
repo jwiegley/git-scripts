@@ -20,12 +20,12 @@
 #  along with git-branch-status.  If not, see <http://www.gnu.org/licenses/>.
 
 #  credits:
-#   * original `git rev-list` grepping - by Jehiah Czebotar
-#   * "s'all good!" message            - by Fredrik Strandin
-#   * ANSI colors                      - by Kristijan Novoselić
-#   * various features and maintenance - by bill-auger
+#    * original `git rev-list` grepping - by Jehiah Czebotar
+#    * "s'all good!" message            - by Fredrik Strandin
+#    * ANSI colors                      - by Kristijan Novoselić
+#    * various features and maintenance - by bill-auger
 
-#  please direct comments, bug reports, feature requests, or PRs to one of the upstream repos:
+#  please direct bug reports, feature requests, or PRs to one of the upstream repos:
 #    * https://github.com/bill-auger/git-branch-status/issues/
 #    * https://notabug.org/bill-auger/git-branch-status/issues/
 
@@ -111,11 +111,13 @@ EXAMPLES:
 USAGE_MSG
 
 
-### constants ###
+## constants ##
 
 readonly INNER_PADDING_W=13 # '| ' + ' | ' + ' | ' + ' | ' + ' |'
 readonly MARGIN_PAD_W=2
-readonly ALL_PADDING_W=$(($INNER_PADDING_W + ($MARGIN_PAD_W * 2)))
+readonly MARGINS_PAD_W=$(( $MARGIN_PAD_W * 2 ))
+readonly ALL_PADDING_W=$(( $INNER_PADDING_W + $MARGINS_PAD_W ))
+readonly MIN_TTY_W=60 # ASSERT: (0 < $ALL_PADDING_W << $MIN_TTY_W)
 readonly CWHITE='\033[0;37m'
 readonly CRED='\033[0;31m'
 readonly CGREEN='\033[0;32m'
@@ -131,18 +133,19 @@ readonly CNOUPSTREAM=$CRED
 readonly CNOLOCAL=$CRED
 readonly HRULE_CHAR='-'
 readonly JOIN_CHAR='~'
-readonly JOIN_REGEX="s/$JOIN_CHAR/ /"
+readonly JOIN_REGEX="s/$JOIN_CHAR/ /g"
 readonly STAR='*'
 readonly DELIM='|'
 readonly NO_UPSTREAM="(no${JOIN_CHAR}upstream)"
 readonly NO_LOCAL="(no${JOIN_CHAR}local)"
 readonly LOCALS_SYNCED_MSG="All tracking branches are synchronized with their upstreams"
 readonly BRANCH_SYNCED_MSG="This tracking branch is synchronized with it's upstream"
-readonly REMOTES_SYNCED_MSG="All identically named remote branches are synchronized"
-readonly UNTRACKED_SYNCHED_MSG="These branches are synchronized"
+readonly UNTRACKED_SYNCHED_MSG="These branches are synchronized with no tracking relationship"
+readonly REMOTES_SYNCED_MSG="All local branches with identical names to those on this remote are synchronized with this remote"
 
 
-### variables ###
+## variables ##
+
 n_tracked_differences=0
 were_any_branches_compared=0
 local_w=0
@@ -159,7 +162,7 @@ declare -a ahead_colors=()
 declare -a remote_colors=()
 
 
-### helpers ###
+## helpers ##
 
 function GetRefs # (refs_dir)
 {
@@ -222,6 +225,7 @@ function IsTrackedBranch # (base_branch_name compare_branch_name)
   base_branch=$1
   compare_branch=$2
   upstream_branch=$(GetUpstreamBranch $base_branch)
+
   [ "$compare_branch" == "$upstream_branch" ] && echo 1 || echo 0
 }
 
@@ -243,9 +247,14 @@ function AppendHeadDate # (commit_ref)
   echo $date$commit
 }
 
-function GetCommitMsg # (commit_ref)
+# function GetCommitMsg # (commit_ref)
+# {
+#   git log -n 1 --format=format:"%s" $1
+# }
+
+function CurrentTtyW
 {
-  git log -n 1 --format=format:"%s" $1
+  stty -F /dev/tty size | cut -d ' ' -f 2
 }
 
 function PrintHRule # (rule_width)
@@ -253,8 +262,15 @@ function PrintHRule # (rule_width)
   printf "%$(($MARGIN_PAD_W))s$(head -c $1 < /dev/zero | tr '\0' $HRULE_CHAR)\n"
 }
 
+function EXIT # (err_msg)
+{
+  err_msg=$1
 
-### business ###
+  echo "$err_msg" && exit
+}
+
+
+## business ##
 
 function Reset
 {
@@ -347,32 +363,27 @@ function GenerateReport # (local_branch_name remote_branch_name)
   if [ ${#remote_msg} -gt $remote_w ] ; then remote_w=${#remote_msg} ; fi ;
 }
 
-function PrintReport # (table_header_line no_results_msg)
+function PrintReport # (table_header_line synchronized_msg)
 {
   header=$1
-  no_results_msg=$2
+  synchronized_msg=$2
+  available_w=$(( $(CurrentTtyW) - $ahead_w - $behind_w - $ALL_PADDING_W ))
   n_notable_differences=${#local_msgs[@]}
   (($were_any_branches_compared)) && !(($n_tracked_differences)) && all_in_sync=1 || all_in_sync=0
 
-  !(($n_notable_differences)) && !(($all_in_sync)) && return
+  (( $available_w < 0 ))                             && return # should never happen
+  !(( $n_notable_differences )) && !(( $all_in_sync )) && return # should never happen
 
   # truncate column widths to fit
-  current_tty_w=$(($(stty -F /dev/tty size | cut -d ' ' -f2)))
-  available_w=$(($(($current_tty_w - $ahead_w - $behind_w - $ALL_PADDING_W))))
-  while (($local_w + $remote_w > $available_w))
-  do if   (($local_w > $remote_w))
-     then local_w=$(($local_w - 1))
-     elif (($remote_w > $local_w))
-     then remote_w=$(($remote_w - 1))
-     else local_w=$(($local_w - 1)) ; remote_w=$(($remote_w - 1)) ;
-     fi
+  while (( $local_w + $remote_w > $available_w ))
+  do    (( $local_w >= $remote_w )) && local_w=$((  $local_w  - 1 ))
+        (( $local_w <= $remote_w )) && remote_w=$(( $remote_w - 1 ))
   done
 
-  # pretty print results
+  # pretty print divergence results
   printf "\n  $header\n"
   if (($n_notable_differences))
   then rule_w=$(($local_w + $behind_w + $ahead_w + $remote_w + $INNER_PADDING_W))
-
        PrintHRule $rule_w
        for (( result_n = 0 ; result_n < $n_notable_differences ; result_n++ ))
        do PrintReportLine
@@ -380,12 +391,26 @@ function PrintReport # (table_header_line no_results_msg)
        PrintHRule $rule_w
   fi
 
-  # print synchronized message if all compared upstreams had no diffs
+  # print "synchronized" message if all compared upstreams had no divergence
   if (($all_in_sync))
-  then rule_w=$((${#no_results_msg} + 4))
+  then l_border="$DELIM " r_border=" $DELIM"
+       borders_pad_w=$(( ${#l_border} + ${#r_border} ))
+       wrap_w=$(( $(CurrentTtyW) - $MARGINS_PAD_W - $borders_pad_w ))
+       synchronized_msg=$(echo "$synchronized_msg" | fold -s -w $wrap_w | tr ' ' "$JOIN_CHAR")
+       rule_w=0
+       for line in $synchronized_msg
+       do  line=${line/%$JOIN_CHAR/}
+           [ ${#line} -gt $rule_w ] && rule_w=${#line}
+       done
+       rule_w=$(($rule_w + $MARGINS_PAD_W))
 
        PrintHRule $rule_w
-       echo -e "  $DELIM $CEVEN$no_results_msg$CEND $DELIM"
+       for line in $synchronized_msg
+       do  line=${line/%$JOIN_CHAR/}
+           pad_w=$(($rule_w - ${#line} - $MARGINS_PAD_W))
+           line_fmt="%$(($MARGIN_PAD_W))s$l_border$CEVEN$line$CEND%$(($pad_w))s$r_border"
+           printf "$line_fmt\n" | sed "$JOIN_REGEX"
+       done
        PrintHRule $rule_w
   fi
 
@@ -399,8 +424,8 @@ function PrintReportLine
   behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
   ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
   remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
-  local_msg="${local_msg:0:$local_w}"   ;
-  remote_msg="${remote_msg:0:$remote_w}" ;
+  local_msg="${local_msg:0:$local_w}"
+  remote_msg="${remote_msg:0:$remote_w}"
   local_color="${local_colors[$result_n]}"
   behind_color="${behind_colors[$result_n]}"
   ahead_color="${ahead_colors[$result_n]}"
@@ -415,16 +440,16 @@ function PrintReportLine
 
   # build output messages and display
   if (($(IsCurrentBranch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
-  local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND)"
+  local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND  )"
   behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
-  ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND)"
+  ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND  )"
   remote_msg="%$(( $remote_offset ))s $(    echo -e $DELIM $remote_color$remote_msg$CEND)"
   end_msg="%$((    $end_offset    ))s $DELIM"
   printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
 }
 
 
-### main entry ###
+## main entry ##
 
 # parse CLI switches
 show_dates=0
@@ -437,16 +462,17 @@ case "$1" in
   '-a'|'--all'     ) show_all=1                                                ;;
   '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
   '-d'|'--dates'   ) show_dates=1                                              ;;
-  '-h'|'--help'    ) echo "$USAGE" ; exit                                      ;;
-  '-l'|'--local'   ) show_all_local=1 ; show_all_upstream=1 ;                  ;;
+  '-h'|'--help'    ) EXIT "$USAGE"                                             ;;
+  '-l'|'--local'   ) show_all_local=1 show_all_upstream=1                      ;;
   '-r'|'--remotes' ) show_all_remote=1                                         ;;
-  '-v'|'--verbose' ) show_all=1 ; show_dates=1                                 ;;
+  '-v'|'--verbose' ) show_all=1 show_dates=1                                   ;;
   *                ) branch_a="$1" branch_b="$2"                               ;;
 esac
 
-[ "$branch_a" ] && !(($(DoesBranchExist $branch_a))) && echo "no such branch: '$branch_a'" && exit
-[ "$branch_b" ] && !(($(DoesBranchExist $branch_b))) && echo "no such branch: '$branch_b'" && exit
-[ "$branch_a" ] && [ -z "$branch_b" ] && !(($(IsLocalBranch $branch_a))) && echo "no such local branch: '$branch_a'" && exit
+(( $(CurrentTtyW) < $MIN_TTY_W ))                                        && EXIT "tty must be wider than $MIN_TTY_W chars"
+[ "$branch_a" ] && !(($(DoesBranchExist $branch_a)))                     && EXIT "no such branch: '$branch_a'"
+[ "$branch_b" ] && !(($(DoesBranchExist $branch_b)))                     && EXIT "no such branch: '$branch_b'"
+[ "$branch_a" ] && [ -z "$branch_b" ] && !(($(IsLocalBranch $branch_a))) && EXIT "no such local branch: '$branch_a'"
 [ "$branch_a" ] && show_all_local=1 # force "no upstream" message for non-tracking branches
 
 readonly FILTER_BRANCH=$branch_a
@@ -459,17 +485,17 @@ readonly SHOW_ALL_REMOTE=$(($show_all   + $show_all_remote))   # show all remote
 
 
 if [ -z "$COMPARE_BRANCH" ]
-then [ "$FILTER_BRANCH" ] && synched_msg="$BRANCH_SYNCED_MSG" || synched_msg="$LOCALS_SYNCED_MSG"
+then [ "$FILTER_BRANCH" ] && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$LOCALS_SYNCED_MSG"
 
      # compare sync status of local branches to their upstreams
      while read local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
-     PrintReport "local <-> upstream" "$synched_msg"
+     PrintReport "local <-> upstream" "$synchronized_msg"
 else is_tracked_branch=$(IsTrackedBranch $FILTER_BRANCH $COMPARE_BRANCH)
-     (($is_tracked_branch)) && synched_msg="$BRANCH_SYNCED_MSG" || synched_msg="$UNTRACKED_SYNCHED_MSG"
+     (($is_tracked_branch)) && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$UNTRACKED_SYNCHED_MSG"
 
      # compare sync status of arbitrary branches per cli args
      GenerateReport $FILTER_BRANCH $COMPARE_BRANCH
-     PrintReport "$FILTER_BRANCH <-> $COMPARE_BRANCH" "$synched_msg"
+     PrintReport "$FILTER_BRANCH <-> $COMPARE_BRANCH" "$synchronized_msg"
 fi
 
 
