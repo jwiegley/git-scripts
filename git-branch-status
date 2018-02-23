@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #  git-branch-status - print pretty git branch sync status reports
 #
 #  Copyright 2011      Jehiah Czebotar     <https://github.com/jehiah>
 #  Copyright 2013      Fredrik Strandin    <https://github.com/kd35a>
 #  Copyright 2014      Kristijan Novoselić <https://github.com/knovoselic>
-#  Copyright 2014-2017 bill-auger          <https://github.com/bill-auger>
+#  Copyright 2014-2018 bill-auger          <https://github.com/bill-auger>
 #
 #  git-branch-status is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License version 3
@@ -28,6 +28,7 @@
 #  please direct bug reports, feature requests, or PRs to one of the upstream repos:
 #    * https://github.com/bill-auger/git-branch-status/issues/
 #    * https://notabug.org/bill-auger/git-branch-status/issues/
+#    * https://pagure.io/git-branch-status/issues/
 
 
 read -r -d '' USAGE <<-'USAGE_MSG'
@@ -36,7 +37,7 @@ USAGE:
   git-branch-status
   git-branch-status [ base-branch-name compare-branch-name ]
   git-branch-status [ -a | --all ]
-  git-branch-status [ -b | --branch ] [filter-branch-name]
+  git-branch-status [ -b | --branch ] [ filter-branch-name ]
   git-branch-status [ -d | --dates ]
   git-branch-status [ -h | --help ]
   git-branch-status [ -l | --local ]
@@ -92,9 +93,9 @@ EXAMPLES:
   # show all local branches - including those synchronized or non-tracking
   $ git-branch-status -l
   $ git-branch-status --local
-    | master         | (even)     | (ahead 1) | origin/master             |
-    | tracked-branch | (even)     | (even)    | origin/tracked-branch     |
-    | local-branch   | n/a        | n/a       | (no upstream)             |
+    | master         | (even)     | (ahead 1) | origin/master         |
+    | tracked-branch | (even)     | (even)    | origin/tracked-branch |
+    | local-branch   | n/a        | n/a       | (no upstream)         |
 
   # show all remote branches - including those not checked-out
   $ git-branch-status -r
@@ -117,7 +118,9 @@ readonly INNER_PADDING_W=13 # '| ' + ' | ' + ' | ' + ' | ' + ' |'
 readonly MARGIN_PAD_W=2
 readonly MARGINS_PAD_W=$(( $MARGIN_PAD_W * 2 ))
 readonly ALL_PADDING_W=$(( $INNER_PADDING_W + $MARGINS_PAD_W ))
-readonly MIN_TTY_W=60 # ASSERT: (0 < $ALL_PADDING_W << $MIN_TTY_W)
+readonly MAX_DIVERGENCE_W=12 # e.g. "(behind 999)"
+readonly MIN_TTY_W=60 # ASSERT: (0 < ($ALL_PADDING_W + (MAX_DIVERGENCE_W * 2)) <= $MIN_TTY_W)
+readonly MARGIN_PAD=$(printf "%$(( $MARGIN_PAD_W ))s")
 readonly CWHITE='\033[0;37m'
 readonly CRED='\033[0;31m'
 readonly CGREEN='\033[0;32m'
@@ -134,39 +137,71 @@ readonly CNOLOCAL=$CRED
 readonly HRULE_CHAR='-'
 readonly JOIN_CHAR='~'
 readonly JOIN_REGEX="s/$JOIN_CHAR/ /g"
+readonly TRIM_REGEX="s/.*\(.\{$MAX_DIVERGENCE_W\}\)$/\1/"
 readonly STAR='*'
 readonly DELIM='|'
 readonly NO_UPSTREAM="(no${JOIN_CHAR}upstream)"
 readonly NO_LOCAL="(no${JOIN_CHAR}local)"
+readonly NOT_REPO_MSG="Not a git repo"
+readonly BARE_REPO_MSG="Bare repo"
+readonly NO_COMMITS_MSG="No commits"
+readonly TTY_W_MSG="TTY must be wider than $MIN_TTY_W chars"
+readonly INVALID_BRANCH_MSG="No such branch:"
+readonly INVALID_LOCAL_BRANCH_MSG="No such local branch:"
+readonly NO_RESULTS_MSG="Nothing to compare"
 readonly LOCALS_SYNCED_MSG="All tracking branches are synchronized with their upstreams"
 readonly BRANCH_SYNCED_MSG="This tracking branch is synchronized with it's upstream"
 readonly UNTRACKED_SYNCHED_MSG="These branches are synchronized with no tracking relationship"
-readonly REMOTES_SYNCED_MSG="All local branches with identical names to those on this remote are synchronized with this remote"
+readonly REMOTES_SYNCED_MSG="All local branches with corresponding names on this remote are synchronized with that remote"
+readonly EXIT_SUCCESS=0
+readonly EXIT_FAILURE=1
+# readonly SHOW_DATES      # Init()
+# readonly SHOW_ALL_SYNCED # Init()
+# readonly SHOW_ALL_LOCAL  # Init()
+# readonly SHOW_ALL_REMOTE # Init()
+# readonly FILTER_BRANCH   # Init()
+# readonly COMPARE_BRANCH  # Init()
 
 
 ## variables ##
 
-n_tracked_differences=0
-were_any_branches_compared=0
-local_w=0
-behind_w=0
-ahead_w=0
-remote_w=0
-declare -a local_msgs=()
-declare -a behind_msgs=()
-declare -a ahead_msgs=()
-declare -a remote_msgs=()
-declare -a local_colors=()
-declare -a behind_colors=()
-declare -a ahead_colors=()
-declare -a remote_colors=()
+WereAnyDivergences=0
+WereAnyCompared=0
+LocalW=0
+BehindW=0
+AheadW=0
+RemoteW=0
+declare -a LocalMsgs=()
+declare -a BehindMsgs=()
+declare -a AheadMsgs=()
+declare -a RemoteMsgs=()
+declare -a LocalColors=()
+declare -a BehindColors=()
+declare -a AheadColors=()
+declare -a RemoteColors=()
 
 
 ## helpers ##
 
+function AssertIsValidRepo
+{
+  [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" == 'true' ] || \
+  ! (( $(AssertIsNotBareRepo) ))                                      && echo 1 || echo 0
+}
+
+function AssertHasCommits
+{
+  [ "$(git cat-file -t HEAD 2> /dev/null)" ] && echo 1 || echo 0
+}
+
+function AssertIsNotBareRepo
+{
+  [ "$(git rev-parse --is-bare-repository 2> /dev/null)" != 'true' ] && echo 1 || echo 0
+}
+
 function GetRefs # (refs_dir)
 {
-  refs_dir=$1
+  local refs_dir=$1
 
   git for-each-ref --format="%(refname:short) %(upstream:short)" $refs_dir 2> /dev/null
 }
@@ -178,17 +213,17 @@ function GetLocalRefs
 
 function GetRemoteRefs # (remote_repo_name)
 {
-  remote_repo=$1
+  local remote_repo=$1
 
   GetRefs refs/remotes/$remote_repo
 }
 
-function GetStatus # (local_commit remote_commit)
+function GetStatus # (base_commit compare_commit)
 {
-  local_commit=$1
-  remote_commit=$2
+  local base_commit=$1
+  local compare_commit=$2
 
-  git rev-list --left-right ${local_commit}...${remote_commit} -- 2>/dev/null
+  git rev-list --left-right ${base_commit}...${compare_commit} -- 2>/dev/null
 }
 
 function GetCurrentBranch
@@ -198,59 +233,55 @@ function GetCurrentBranch
 
 function GetUpstreamBranch # (local_branch)
 {
-  local_branch=$1
+  local local_branch=$1
 
   git rev-parse --abbrev-ref $local_branch@{upstream} 2> /dev/null
 }
 
 function IsCurrentBranch # (branch_name)
 {
-  branch=$1
-  this_branch=$(AppendHeadDate $branch)
-  current_branch=$(AppendHeadDate $(GetCurrentBranch))
+  local branch=$1
+  local this_branch=$(AppendHeadDate $branch)
+  local current_branch=$(AppendHeadDate $(GetCurrentBranch))
 
   [ "$this_branch" == "$current_branch" ] && echo 1 || echo 0
 }
 
 function IsLocalBranch # (branch_name)
 {
-  branch=$1
-  is_local_branch=$(git branch -a | grep -E "^.* $branch$")
+  local branch=$1
+  local is_local_branch=$(git branch -a | grep -E "^.* $branch$")
 
   [ "$is_local_branch" ] && echo 1 || echo 0
 }
 
 function IsTrackedBranch # (base_branch_name compare_branch_name)
 {
-  base_branch=$1
-  compare_branch=$2
-  upstream_branch=$(GetUpstreamBranch $base_branch)
+  local base_branch=$1
+  local compare_branch=$2
+  local upstream_branch=$(GetUpstreamBranch $base_branch)
 
   [ "$compare_branch" == "$upstream_branch" ] && echo 1 || echo 0
 }
 
 function DoesBranchExist # (branch_name)
 {
-  branch=$1
-  is_known_branch=$(git branch -a | grep -E "^.* (remotes\/)?$branch$")
+  local branch=$1
+  local is_known_branch=$(git branch -a | grep -E "^.* (remotes\/)?$branch$")
 
   [ "$is_known_branch" ] && echo 1 || echo 0
 }
 
 function AppendHeadDate # (commit_ref)
 {
-  commit=$1
-  author_date=$(git log -n 1 --format=format:"%ai" $commit 2> /dev/null)
+  local commit=$1
+  local author_date=$(git log -n 1 --format=format:"%ai" $commit 2> /dev/null)
+  local date=''
 
   (($SHOW_DATES)) && [ "$author_date" ] && date="${author_date:0:10}$JOIN_CHAR"
 
   echo $date$commit
 }
-
-# function GetCommitMsg # (commit_ref)
-# {
-#   git log -n 1 --format=format:"%s" $1
-# }
 
 function CurrentTtyW
 {
@@ -259,83 +290,161 @@ function CurrentTtyW
 
 function PrintHRule # (rule_width)
 {
-  printf "%$(($MARGIN_PAD_W))s$(head -c $1 < /dev/zero | tr '\0' $HRULE_CHAR)\n"
+  local rule_w=$1
+
+  printf "$MARGIN_PAD$(head -c $rule_w < /dev/zero | tr '\0' $HRULE_CHAR)\n"
 }
 
-function EXIT # (err_msg)
+function EXIT # (exit_msg exit_status)
 {
-  err_msg=$1
+  local exit_msg=$1
+  local exit_status=$2
 
-  echo "$err_msg" && exit
+  case "$exit_status" in
+       $EXIT_SUCCESS      ) echo "$exit_msg"        ; exit $EXIT_SUCCESS ;;
+       $EXIT_FAILURE | '' ) echo "fatal: $exit_msg" ; exit $EXIT_FAILURE ;;
+  esac
 }
 
 
 ## business ##
 
-function Reset
+function Init # (cli_args)
 {
-  n_tracked_differences=0
-  were_any_branches_compared=0
-  local_w=0
-  behind_w=0
-  ahead_w=0
-  remote_w=0
-  local_msgs=()
-  behind_msgs=()
-  ahead_msgs=()
-  remote_msgs=()
-  local_colors=()
-  behind_colors=()
-  ahead_colors=()
-  remote_colors=()
+  local show_dates=0
+  local show_all=0
+  local show_all_synced=0
+  local show_all_local=0
+  local show_all_remote=0
+  local branch_a=''
+  local branch_b=''
+
+  # parse CLI switches
+  case "$1" in
+       '-a'|'--all'     ) show_all=1                                                ;;
+       '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
+       '-d'|'--dates'   ) show_dates=1                                              ;;
+       '-h'|'--help'    ) EXIT "$USAGE" $EXIT_SUCCESS                               ;;
+       '-l'|'--local'   ) show_all_local=1  ; show_all_synced=1 ;                   ;;
+       '-r'|'--remotes' ) show_all_remote=1 ; show_all_synced=1 ;                   ;;
+       '-v'|'--verbose' ) show_all=1        ; show_dates=1      ;                   ;;
+       *                ) branch_a="$1"     ; branch_b="$2"     ;                   ;;
+  esac
+
+  # sanity checks
+  (( $(AssertIsValidRepo  )       ))                                        || EXIT "$NOT_REPO_ERR"
+  (( $(AssertIsNotBareRepo)       ))                                        || EXIT "$BARE_REPO_MSG"
+  (( $(AssertHasCommits   )       ))                                        || EXIT "$NO_COMMITS_MSG"
+  (( $(CurrentTtyW) >= $MIN_TTY_W ))                                        || EXIT "$TTY_W_MSG"
+  [ -z "$branch_a" ] || (($(DoesBranchExist $branch_a)))                    || EXIT "$INVALID_BRANCH_MSG '$branch_a'"
+  [ -z "$branch_b" ] || (($(DoesBranchExist $branch_b)))                    || EXIT "$INVALID_BRANCH_MSG '$branch_b'"
+  [ -z "$branch_a" ] || (($(IsLocalBranch   $branch_a))) || [ "$branch_b" ] || EXIT "$INVALID_LOCAL_BRANCH_MSG '$branch_a'"
+  [ -z "$branch_a" ] || show_all_local=1 # force "no upstream" message for non-tracking branches
+
+  readonly SHOW_DATES=$show_dates
+  readonly SHOW_ALL_SYNCED=$(( $show_all + $show_all_synced )) # show branches that are synchronized with their counterparts
+  readonly SHOW_ALL_LOCAL=$((  $show_all + $show_all_local  )) # show local branches that are not tracking any upstream
+  readonly SHOW_ALL_REMOTE=$(( $show_all + $show_all_remote )) # show all remote branches
+  readonly FILTER_BRANCH=$branch_a
+  readonly COMPARE_BRANCH=$branch_b
 }
 
-function GenerateReport # (local_branch_name remote_branch_name)
+function GenerateReports
 {
-  base_branch=$1
-  compare_branch=$2
-  does_base_branch_exist=$(DoesBranchExist $base_branch)
-  does_compare_branch_exist=$(DoesBranchExist $compare_branch)
-  is_tracked_branch=$(IsTrackedBranch $base_branch $compare_branch)
+  if   [ "$COMPARE_BRANCH" ]
+  then CustomReport $(IsTrackedBranch $FILTER_BRANCH $COMPARE_BRANCH)
+  else (( !(( $SHOW_ALL_REMOTE )) || (( $SHOW_ALL_LOCAL )) )) && LocalReport
+       (( $SHOW_ALL_REMOTE                                 )) && RemoteReport
+  fi
+}
+
+function CustomReport # (is_tracked_branch)
+{
+  local is_tracked_branch=$1
+  local synchronized_msg
+  (($is_tracked_branch)) && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$UNTRACKED_SYNCHED_MSG"
+
+  # compare sync status of arbitrary branches per cli args
+  GenerateReport $FILTER_BRANCH $COMPARE_BRANCH
+  PrintReport "$FILTER_BRANCH <-> $COMPARE_BRANCH" "$synchronized_msg"
+}
+
+function LocalReport
+{
+  local synchronized_msg
+  [ "$FILTER_BRANCH" ] && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$LOCALS_SYNCED_MSG"
+
+  # compare sync status of local branches to their upstreams
+  while read local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
+  PrintReport "local <-> upstream" "$synchronized_msg"
+}
+
+function RemoteReport
+{
+  local synchronized_msg="$REMOTES_SYNCED_MSG"
+  local remote_repo
+
+  # compare sync status of remote branches to local branches with the same names
+  for remote_repo in $(git remote)
+  do  while read remote_branch
+      do    local local_branch=${remote_branch#$remote_repo/}
+
+            GenerateReport $local_branch $remote_branch
+      done < <(GetRemoteRefs $remote_repo)
+
+      PrintReport "local <-> $remote_repo" "$synchronized_msg"
+  done
+}
+
+function GenerateReport # (base_branch compare_branch)
+{
+  local base_branch=$1
+  local compare_branch=$2
+  local does_base_branch_exist=$(   DoesBranchExist $base_branch                )
+  local does_compare_branch_exist=$(DoesBranchExist $compare_branch             )
+  local is_tracked_branch=$(        IsTrackedBranch $base_branch $compare_branch)
+  local local_msg   ; local behind_msg   ; local ahead_msg   ; local remote_msg   ;
+  local local_color ; local behind_color ; local ahead_color ; local remote_color ;
 
   # filter heads
-  [ "$base_branch" == 'HEAD' ] && return
+  [ "$base_branch" != 'HEAD' ] || return
 
   # filter branches per CLI arg
-  [ "$FILTER_BRANCH" -a "$base_branch" != "$FILTER_BRANCH" ] && return
+  [ -z "$FILTER_BRANCH" -o "$base_branch" == "$FILTER_BRANCH" ] || return
 
   # parse local<->remote or arbitrary branches sync status
-  if (($does_base_branch_exist)) && (($does_compare_branch_exist))
-  then status=$(GetStatus $base_branch $compare_branch) ; (($?)) && return ;
+  if   (( ! $does_base_branch_exist )) && (( ! $does_compare_branch_exist )) ; then return ;
+  elif ((   $does_base_branch_exist )) && ((   $does_compare_branch_exist ))
+  then local status=$(GetStatus $base_branch $compare_branch) ; (( ! $? )) || return ;
 
-       n_behind=$(echo $status | tr " " "\n" | grep -c '^>')
-       n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
-       n_differences=$(($n_behind + $n_ahead))
-       n_tracked_differences=$(($n_tracked_differences + $n_differences))
-       were_any_branches_compared=1
+       local n_behind=$(echo $status | tr " " "\n" | grep -c '^>')
+       local n_ahead=$( echo $status | tr " " "\n" | grep -c '^<')
+       local n_divergences=$(( $n_behind + $n_ahead ))
+       (( $WereAnyDivergences + $n_divergences )) && WereAnyDivergences=1
+       WereAnyCompared=1
 
        # filter branches by status
-       (($SHOW_ALL_UPSTREAM)) || (($n_differences)) || return
+       (( $SHOW_ALL_SYNCED )) || (( $n_divergences )) || return
 
        # set data for branches with remote counterparts or arbitrary branches
        (($is_tracked_branch)) && color=$CTRACKING || color=$CDEFAULT
        local_color=$color
-       if (($n_behind))
+       if   (( $n_behind ))
        then behind_msg="(behind$JOIN_CHAR$n_behind)" ; behind_color=$CBEHIND ;
        else behind_msg="(even)"                      ; behind_color=$CEVEN   ;
        fi
-       if (($n_ahead))
+       if   (( $n_ahead ))
        then ahead_msg="(ahead$JOIN_CHAR$n_ahead)"    ; ahead_color=$CAHEAD   ;
        else ahead_msg="(even)"                       ; ahead_color=$CEVEN    ;
        fi
        remote_color=$color
-  elif (($does_base_branch_exist)) && !(($does_compare_branch_exist)) && (($SHOW_ALL_LOCAL))
+  elif ((   $does_base_branch_exist )) && (( $SHOW_ALL_LOCAL ))
   then # dummy data for local branches with no upstream counterpart
        local_color=$CDEFAULT
        behind_color="$CDEFAULT"  ; behind_msg="n/a"              ;
        ahead_color="$CDEFAULT"   ; ahead_msg="n/a"               ;
        remote_color=$CNOUPSTREAM ; compare_branch="$NO_UPSTREAM" ;
-  elif !(($does_base_branch_exist)) && (($does_compare_branch_exist)) && (($SHOW_ALL_REMOTE))
+  elif (( ! $does_base_branch_exist )) && (( $SHOW_ALL_REMOTE ))
   then # dummy data for remote branches with no local counterpart
        local_color=$CNOLOCAL     ; base_branch="$NO_LOCAL"       ;
        behind_color="$CDEFAULT"  ; behind_msg="n/a"              ;
@@ -343,72 +452,79 @@ function GenerateReport # (local_branch_name remote_branch_name)
        remote_color=$CDEFAULT
   else return
   fi
-  local_msg="$(AppendHeadDate $base_branch)"
-  remote_msg="$(AppendHeadDate $compare_branch)"
+  local_msg="$( AppendHeadDate $base_branch         )"
+  behind_msg=$( echo $behind_msg | sed "$TRIM_REGEX")
+  ahead_msg=$(  echo $ahead_msg  | sed "$TRIM_REGEX")
+  remote_msg="$(AppendHeadDate $compare_branch      )"
 
   # populate lists
-  local_msgs=(    ${local_msgs[@]}    "$local_msg"    )
-  behind_msgs=(   ${behind_msgs[@]}   "$behind_msg"   )
-  ahead_msgs=(    ${ahead_msgs[@]}    "$ahead_msg"    )
-  remote_msgs=(   ${remote_msgs[@]}   "$remote_msg"   )
-  local_colors=(  ${local_colors[@]}  "$local_color"  )
-  behind_colors=( ${behind_colors[@]} "$behind_color" )
-  ahead_colors=(  ${ahead_colors[@]}  "$ahead_color"  )
-  remote_colors=( ${remote_colors[@]} "$remote_color" )
+  LocalMsgs=(    ${LocalMsgs[@]}    "$local_msg"    )
+  BehindMsgs=(   ${BehindMsgs[@]}   "$behind_msg"   )
+  AheadMsgs=(    ${AheadMsgs[@]}    "$ahead_msg"    )
+  RemoteMsgs=(   ${RemoteMsgs[@]}   "$remote_msg"   )
+  LocalColors=(  ${LocalColors[@]}  "$local_color"  )
+  BehindColors=( ${BehindColors[@]} "$behind_color" )
+  AheadColors=(  ${AheadColors[@]}  "$ahead_color"  )
+  RemoteColors=( ${RemoteColors[@]} "$remote_color" )
 
   # determine uniform column widths
-  if [ ${#local_msg}  -gt $local_w  ] ; then local_w=${#local_msg}   ; fi ;
-  if [ ${#behind_msg} -gt $behind_w ] ; then behind_w=${#behind_msg} ; fi ;
-  if [ ${#ahead_msg}  -gt $ahead_w  ] ; then ahead_w=${#ahead_msg}   ; fi ;
-  if [ ${#remote_msg} -gt $remote_w ] ; then remote_w=${#remote_msg} ; fi ;
+  if [ ${#local_msg}  -gt $LocalW  ] ; then LocalW=${#local_msg}   ; fi ;
+  if [ ${#behind_msg} -gt $BehindW ] ; then BehindW=${#behind_msg} ; fi ;
+  if [ ${#ahead_msg}  -gt $AheadW  ] ; then AheadW=${#ahead_msg}   ; fi ;
+  if [ ${#remote_msg} -gt $RemoteW ] ; then RemoteW=${#remote_msg} ; fi ;
 }
 
 function PrintReport # (table_header_line synchronized_msg)
 {
-  header=$1
-  synchronized_msg=$2
-  available_w=$(( $(CurrentTtyW) - $ahead_w - $behind_w - $ALL_PADDING_W ))
-  n_notable_differences=${#local_msgs[@]}
-  (($were_any_branches_compared)) && !(($n_tracked_differences)) && all_in_sync=1 || all_in_sync=0
+  local table_header_line=$1
+  local synchronized_msg=$2
+  local available_w=$(( $(CurrentTtyW) - $AheadW - $BehindW - $ALL_PADDING_W ))
+  local n_results=${#LocalMsgs[@]}
+  local all_in_sync
+  local result_n
+  (( $WereAnyCompared )) && !(( $WereAnyDivergences )) && all_in_sync=1 || all_in_sync=0
 
-  (( $available_w < 0 ))                             && return # should never happen
-  !(( $n_notable_differences )) && !(( $all_in_sync )) && return # should never happen
+  (( $n_results == 0 )) && (( $all_in_sync == 0 )) && EXIT "$NO_RESULTS_MSG"
 
   # truncate column widths to fit
-  while (( $local_w + $remote_w > $available_w ))
-  do    (( $local_w >= $remote_w )) && local_w=$((  $local_w  - 1 ))
-        (( $local_w <= $remote_w )) && remote_w=$(( $remote_w - 1 ))
+  while (( $LocalW + $RemoteW > $available_w ))
+  do    (( $LocalW >= $RemoteW )) && LocalW=$((  $LocalW  - 1 ))
+        (( $LocalW <= $RemoteW )) && RemoteW=$(( $RemoteW - 1 ))
   done
 
   # pretty print divergence results
-  printf "\n  $header\n"
-  if (($n_notable_differences))
-  then rule_w=$(($local_w + $behind_w + $ahead_w + $remote_w + $INNER_PADDING_W))
+  printf "\n$MARGIN_PAD$table_header_line\n"
+  if   (( $n_results ))
+  then local rule_w=$(( $LocalW + $BehindW + $AheadW + $RemoteW + $INNER_PADDING_W ))
        PrintHRule $rule_w
-       for (( result_n = 0 ; result_n < $n_notable_differences ; result_n++ ))
-       do PrintReportLine
+       for (( result_n = 0 ; result_n < $n_results ; ++result_n ))
+       do  PrintReportLine
        done
        PrintHRule $rule_w
   fi
 
   # print "synchronized" message if all compared upstreams had no divergence
-  if (($all_in_sync))
-  then l_border="$DELIM " r_border=" $DELIM"
-       borders_pad_w=$(( ${#l_border} + ${#r_border} ))
-       wrap_w=$(( $(CurrentTtyW) - $MARGINS_PAD_W - $borders_pad_w ))
+  if   (( $all_in_sync ))
+  then local l_border="$DELIM " ; local r_border=" $DELIM" ;
+       local borders_pad_w=$(( ${#l_border} + ${#r_border} ))
+       local wrap_w=$(( $(CurrentTtyW) - $MARGINS_PAD_W - $borders_pad_w ))
+       local line
+       local rule_w=0
+
+       # wrap message and determine box width
        synchronized_msg=$(echo "$synchronized_msg" | fold -s -w $wrap_w | tr ' ' "$JOIN_CHAR")
-       rule_w=0
        for line in $synchronized_msg
        do  line=${line/%$JOIN_CHAR/}
            [ ${#line} -gt $rule_w ] && rule_w=${#line}
        done
-       rule_w=$(($rule_w + $MARGINS_PAD_W))
+       rule_w=$(( $rule_w + $MARGINS_PAD_W ))
 
+       # display message
        PrintHRule $rule_w
        for line in $synchronized_msg
        do  line=${line/%$JOIN_CHAR/}
-           pad_w=$(($rule_w - ${#line} - $MARGINS_PAD_W))
-           line_fmt="%$(($MARGIN_PAD_W))s$l_border$CEVEN$line$CEND%$(($pad_w))s$r_border"
+           local pad_w=$(( $rule_w - ${#line} - $MARGINS_PAD_W ))
+           local line_fmt="$MARGIN_PAD$l_border$CEVEN$line$CEND%$(( $pad_w ))s$r_border"
            printf "$line_fmt\n" | sed "$JOIN_REGEX"
        done
        PrintHRule $rule_w
@@ -419,27 +535,28 @@ function PrintReport # (table_header_line synchronized_msg)
 
 function PrintReportLine
 {
-  # fetch data
-  local_msg=$(  echo ${local_msgs[$result_n]}  | sed "$JOIN_REGEX" )
-  behind_msg=$( echo ${behind_msgs[$result_n]} | sed "$JOIN_REGEX" )
-  ahead_msg=$(  echo ${ahead_msgs[$result_n]}  | sed "$JOIN_REGEX" )
-  remote_msg=$( echo ${remote_msgs[$result_n]} | sed "$JOIN_REGEX" )
-  local_msg="${local_msg:0:$local_w}"
-  remote_msg="${remote_msg:0:$remote_w}"
-  local_color="${local_colors[$result_n]}"
-  behind_color="${behind_colors[$result_n]}"
-  ahead_color="${ahead_colors[$result_n]}"
-  remote_color="${remote_colors[$result_n]}"
+  # select data
+  local local_msg=$( echo ${LocalMsgs[ $result_n]}         | sed "$JOIN_REGEX")
+  local behind_msg=$(echo ${BehindMsgs[$result_n]:$trim_w} | sed "$JOIN_REGEX")
+  local ahead_msg=$( echo ${AheadMsgs[ $result_n]:$trim_w} | sed "$JOIN_REGEX")
+  local remote_msg=$(echo ${RemoteMsgs[$result_n]}         | sed "$JOIN_REGEX")
+  local end_msg ; local star ;
+  local_msg="${local_msg:0:$LocalW}"
+  remote_msg="${remote_msg:0:$RemoteW}"
+  local local_color="${LocalColors[$result_n]}"
+  local behind_color="${BehindColors[$result_n]}"
+  local ahead_color="${AheadColors[$result_n]}"
+  local remote_color="${RemoteColors[$result_n]}"
 
   # calculate column offsets
-  local_offset=1
-  behind_offset=$(( $local_w  - ${#local_msg}  ))
-  ahead_offset=$((  $behind_w - ${#behind_msg} ))
-  remote_offset=$(( $ahead_w  - ${#ahead_msg}  ))
-  end_offset=$((    $remote_w - ${#remote_msg} ))
+  local local_offset=1
+  local behind_offset=$(( $LocalW  - ${#local_msg}  ))
+  local ahead_offset=$((  $BehindW - ${#behind_msg} ))
+  local remote_offset=$(( $AheadW  - ${#ahead_msg}  ))
+  local end_offset=$((    $RemoteW - ${#remote_msg} ))
 
   # build output messages and display
-  if (($(IsCurrentBranch $local_msg))) ; then star=$STAR ; else star=" " ; fi ;
+  (( $(IsCurrentBranch $local_msg) )) && star=$STAR || star=" "
   local_msg="%$((  $local_offset  ))s$star$(echo -e $DELIM $local_color$local_msg$CEND  )"
   behind_msg="%$(( $behind_offset ))s $(    echo -e $DELIM $behind_color$behind_msg$CEND)"
   ahead_msg="%$((  $ahead_offset  ))s $(    echo -e $DELIM $ahead_color$ahead_msg$CEND  )"
@@ -448,66 +565,26 @@ function PrintReportLine
   printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
 }
 
+function Reset
+{
+  WereAnyDivergences=0
+  WereAnyCompared=0
+  LocalW=0
+  BehindW=0
+  AheadW=0
+  RemoteW=0
+  LocalMsgs=()
+  BehindMsgs=()
+  AheadMsgs=()
+  RemoteMsgs=()
+  LocalColors=()
+  BehindColors=()
+  AheadColors=()
+  RemoteColors=()
+}
+
 
 ## main entry ##
 
-# parse CLI switches
-show_dates=0
-show_all=0
-show_all_local=0
-show_all_upstream=0
-show_all_remote=0
-
-case "$1" in
-  '-a'|'--all'     ) show_all=1                                                ;;
-  '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
-  '-d'|'--dates'   ) show_dates=1                                              ;;
-  '-h'|'--help'    ) EXIT "$USAGE"                                             ;;
-  '-l'|'--local'   ) show_all_local=1 show_all_upstream=1                      ;;
-  '-r'|'--remotes' ) show_all_remote=1                                         ;;
-  '-v'|'--verbose' ) show_all=1 show_dates=1                                   ;;
-  *                ) branch_a="$1" branch_b="$2"                               ;;
-esac
-
-(( $(CurrentTtyW) < $MIN_TTY_W ))                                        && EXIT "tty must be wider than $MIN_TTY_W chars"
-[ "$branch_a" ] && !(($(DoesBranchExist $branch_a)))                     && EXIT "no such branch: '$branch_a'"
-[ "$branch_b" ] && !(($(DoesBranchExist $branch_b)))                     && EXIT "no such branch: '$branch_b'"
-[ "$branch_a" ] && [ -z "$branch_b" ] && !(($(IsLocalBranch $branch_a))) && EXIT "no such local branch: '$branch_a'"
-[ "$branch_a" ] && show_all_local=1 # force "no upstream" message for non-tracking branches
-
-readonly FILTER_BRANCH=$branch_a
-readonly COMPARE_BRANCH=$branch_b
-readonly SHOW_DATES=$show_dates
-readonly SHOW_ALL=$show_all
-readonly SHOW_ALL_LOCAL=$(($show_all    + $show_all_local))    # show local branches that are not tracking any upstream
-readonly SHOW_ALL_UPSTREAM=$(($show_all + $show_all_upstream)) # show local branches that are synchronized with their upstream
-readonly SHOW_ALL_REMOTE=$(($show_all   + $show_all_remote))   # show all remote branches
-
-
-if [ -z "$COMPARE_BRANCH" ]
-then [ "$FILTER_BRANCH" ] && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$LOCALS_SYNCED_MSG"
-
-     # compare sync status of local branches to their upstreams
-     while read local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
-     PrintReport "local <-> upstream" "$synchronized_msg"
-else is_tracked_branch=$(IsTrackedBranch $FILTER_BRANCH $COMPARE_BRANCH)
-     (($is_tracked_branch)) && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$UNTRACKED_SYNCHED_MSG"
-
-     # compare sync status of arbitrary branches per cli args
-     GenerateReport $FILTER_BRANCH $COMPARE_BRANCH
-     PrintReport "$FILTER_BRANCH <-> $COMPARE_BRANCH" "$synchronized_msg"
-fi
-
-
-(($SHOW_ALL_REMOTE)) && [ -z "$FILTER_BRANCH" ] || exit
-
-# compare sync status of remote branches to local branches with the same names
-for remote_repo in `git remote`
-do while read remote_branch
-   do local_branch=${remote_branch#$remote_repo/}
-
-      GenerateReport $local_branch $remote_branch
-   done < <(GetRemoteRefs $remote_repo)
-
-   PrintReport "local <-> $remote_repo" "$REMOTES_SYNCED_MSG"
-done
+Init $*
+GenerateReports
