@@ -285,14 +285,18 @@ function AppendHeadDate # (commit_ref)
 
 function CurrentTtyW
 {
-  stty -F /dev/tty size | cut -d ' ' -f 2
+  local tty_dims=$(stty -F /dev/tty size 2> /dev/null || stty -f /dev/tty size 2> /dev/null)
+  local tty_w=$(echo $tty_dims | cut -d ' ' -f 2)
+
+  (( $tty_w )) && echo "$tty_w" || echo "$MIN_TTY_W"
 }
 
 function PrintHRule # (rule_width)
 {
   local rule_w=$1
+  local h_rule="$(dd if=/dev/zero bs=$rule_w count=1 2> /dev/null | tr '\0' $HRULE_CHAR)"
 
-  printf "$MARGIN_PAD$(head -c $rule_w < /dev/zero | tr '\0' $HRULE_CHAR)\n"
+  echo "$MARGIN_PAD$h_rule"
 }
 
 function EXIT # (exit_msg exit_status)
