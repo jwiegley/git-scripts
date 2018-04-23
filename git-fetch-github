@@ -1,0 +1,3 @@
+#!/bin/bash
+REMOTE=${1:-origin}
+git config remote.${REMOTE}.fetch "+refs/pull/*:refs/remotes/${REMOTE}/pr/*"
