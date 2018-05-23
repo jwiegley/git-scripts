@@ -6,6 +6,8 @@
 ## This is free software, and you are welcome to redistribute it
 ## under certain conditions; see COPYING for details.
 
+# Purpose: This script adds all modified and deleted files, 
+# except the new files and adds it to the recent commit by amending it
 
 set -e
 
