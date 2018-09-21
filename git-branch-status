@@ -149,6 +149,7 @@ readonly TTY_W_MSG="TTY must be wider than $MIN_TTY_W chars"
 readonly INVALID_BRANCH_MSG="No such branch:"
 readonly INVALID_LOCAL_BRANCH_MSG="No such local branch:"
 readonly NO_RESULTS_MSG="Nothing to compare"
+readonly NO_REFS_MSG="(No data)"
 readonly LOCALS_SYNCED_MSG="All tracking branches are synchronized with their upstreams"
 readonly BRANCH_SYNCED_MSG="This tracking branch is synchronized with it's upstream"
 readonly UNTRACKED_SYNCHED_MSG="These branches are synchronized with no tracking relationship"
@@ -428,7 +429,7 @@ function GenerateReport # (base_branch compare_branch)
        WereAnyCompared=1
 
        # filter branches by status
-       (( $SHOW_ALL_SYNCED )) || (( $n_divergences )) || return
+       (( $SHOW_ALL_SYNCED )) || (( $n_divergences > 0 )) || return
 
        # set data for branches with remote counterparts or arbitrary branches
        (($is_tracked_branch)) && color=$CTRACKING || color=$CDEFAULT
@@ -484,11 +485,9 @@ function PrintReport # (table_header_line synchronized_msg)
   local synchronized_msg=$2
   local available_w=$(( $(CurrentTtyW) - $AheadW - $BehindW - $ALL_PADDING_W ))
   local n_results=${#LocalMsgs[@]}
-  local all_in_sync
+  local are_all_in_sync
   local result_n
-  (( $WereAnyCompared )) && !(( $WereAnyDivergences )) && all_in_sync=1 || all_in_sync=0
-
-  (( $n_results == 0 )) && (( $all_in_sync == 0 )) && EXIT "$NO_RESULTS_MSG"
+  (( $WereAnyCompared )) && !(( $WereAnyDivergences )) && are_all_in_sync=1 || are_all_in_sync=0
 
   # truncate column widths to fit
   while (( $LocalW + $RemoteW > $available_w ))
@@ -496,19 +495,29 @@ function PrintReport # (table_header_line synchronized_msg)
         (( $LocalW <= $RemoteW )) && RemoteW=$(( $RemoteW - 1 ))
   done
 
+  # print comparison header
+  if   (( $are_all_in_sync ))
+  then printf "\n$CGREEN$MARGIN_PAD$table_header_line$CEND\n"
+  elif (( $n_results > 0 ))
+  then printf "\n$MARGIN_PAD$table_header_line\n"
+  else printf "\n$CRED$MARGIN_PAD$table_header_line$CEND$MARGIN_PAD"
+  fi
+
   # pretty print divergence results
-  printf "\n$MARGIN_PAD$table_header_line\n"
-  if   (( $n_results ))
+  if   (( $n_results > 0 ))
   then local rule_w=$(( $LocalW + $BehindW + $AheadW + $RemoteW + $INNER_PADDING_W ))
+
        PrintHRule $rule_w
        for (( result_n = 0 ; result_n < $n_results ; ++result_n ))
        do  PrintReportLine
        done
        PrintHRule $rule_w
+  else ([ -z "$(GetRemoteRefs $remote_repo)" ] && printf "$CRED$NO_REFS_MSG$CEND\n") || \
+       (!(( $are_all_in_sync ))                && echo "$NO_RESULTS_MSG"           )
   fi
 
   # print "synchronized" message if all compared upstreams had no divergence
-  if   (( $all_in_sync ))
+  if   (( $are_all_in_sync ))
   then local l_border="$DELIM " ; local r_border=" $DELIM" ;
        local borders_pad_w=$(( ${#l_border} + ${#r_border} ))
        local wrap_w=$(( $(CurrentTtyW) - $MARGINS_PAD_W - $borders_pad_w ))
