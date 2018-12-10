@@ -1,0 +1,4 @@
+#!/bin/bash
+
+find . -name config -type f -print0 \
+    | xargs -0 perl -i -ne 'print unless /worktree =/;'
