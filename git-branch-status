@@ -328,7 +328,7 @@ function Init # (cli_args)
   case "$1" in
        '-a'|'--all'     ) show_all=1                                                ;;
        '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
-       '-d'|'--dates'   ) show_dates=1                                              ;;
+       '-d'|'--dates'   ) branch_a="$2"     ; branch_b="$3"     ; show_dates=1      ;;
        '-h'|'--help'    ) EXIT "$USAGE" $EXIT_SUCCESS                               ;;
        '-l'|'--local'   ) show_all_local=1  ; show_all_synced=1 ;                   ;;
        '-r'|'--remotes' ) show_all_remote=1 ; show_all_synced=1 ;                   ;;
