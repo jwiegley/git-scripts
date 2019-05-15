@@ -112,6 +112,18 @@ EXAMPLES:
 USAGE_MSG
 
 
+## user-defined constants (see ./config.ini.example) ##
+
+readonly THIS_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo $0)")"
+readonly CFG_FILE=${THIS_DIR}/config.ini.example
+readonly LAST_FETCH_FILE=${THIS_DIR}/LAST_FETCH
+readonly CFG_FETCH_REGEX='/^\s*FETCH_PERIOD\s*=\s*-?[0-9]+/'
+readonly CFG_AWK_CMD='{ print ($2 + 0) }'
+
+declare -a cfg_fetch_period=($(awk -F '=' "${CFG_FETCH_REGEX}${CFG_AWK_CMD}" ${CFG_FILE} 2>/dev/null))
+readonly FETCH_PERIOD=$([ "${cfg_fetch_period[0]}" ] && echo ${cfg_fetch_period[0]} || echo '-1')
+
+
 ## constants ##
 
 readonly INNER_PADDING_W=13 # '| ' + ' | ' + ' | ' + ' | ' + ' |'
@@ -352,6 +364,19 @@ function Init # (cli_args)
   readonly SHOW_ALL_REMOTE=$(( $show_all + $show_all_remote )) # show all remote branches
   readonly FILTER_BRANCH=$branch_a
   readonly COMPARE_BRANCH=$branch_b
+}
+
+function FetchRemotes
+{
+  if   (( ${FETCH_PERIOD} >= 0 ))
+  then local now_ts=$(date +%s)
+       local last_fetch_ts=$(awk 'NR==1 { print ($1 + 0) }' ${LAST_FETCH_FILE} 2> /dev/null)
+
+       if   (( ${now_ts} - (${last_fetch_ts} + 0) >= ${FETCH_PERIOD} * 60 ))
+       then git fetch --all
+            echo ${now_ts} > ${LAST_FETCH_FILE}
+       fi
+  fi
 }
 
 function GenerateReports
@@ -600,4 +625,5 @@ function Reset
 ## main entry ##
 
 Init $*
+FetchRemotes
 GenerateReports

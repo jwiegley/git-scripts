@@ -1,0 +1,8 @@
+######################################################################
+#  optional user-defined config for the 'git-branch-status' program  #
+#  copy this file to: ./config.ini to customize                      #
+######################################################################
+
+
+# number of minutes between automatic `git fetch --all` calls (0 => always, -1 => never)
+FETCH_PERIOD=-1
