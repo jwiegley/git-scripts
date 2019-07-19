@@ -1,13 +1,12 @@
 #!/bin/bash
-
 stash=$(git diff)
-if [[ stash ]]; then
+if [[ ! -z "$stash" ]]; then
 	git stash
 fi
 git checkout master
 git pull --rebase
 git checkout -
 git rebase master
-if [[ stash ]]; then
+if [[ ! -z "$stash" ]]; then
 	git stash pop
 fi
