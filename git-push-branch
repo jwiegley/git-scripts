@@ -1,2 +1,3 @@
 #!/bin/sh
-git push origin $1:refs/heads/$1
+BRANCH="${1:-$(git rev-parse --abbrev-ref HEAD)}"
+echo git push origin $BRANCH:refs/heads/$BRANCH
