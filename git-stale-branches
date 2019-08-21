@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if ! git config --get-all remote.origin.fetch | grep -q '/pr/'; then
+    git config --add remote.origin.fetch '+refs/pull/*:refs/remotes/origin/pr/*'
+fi
+
+git fetch --all
+
+for r in $(git branch -r --format='%(refname)'); do
+    git branch --merged $r;
+done | sort -u | grep -v '^\*' | xargs -r echo # git branch -D

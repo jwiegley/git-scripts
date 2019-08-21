@@ -9,4 +9,4 @@ fi
 
 exec find $DIRS \( -path '*/.git/config' -o \
                    -regex '.*/.git/.*/config' \) -type f -print0 \
-         | parallel -0 --bar --delay 1 -k "git --git-dir={//} $@"
+         | parallel -0 --bar -j0 --delay 1 -k "git --git-dir={//} $@"
