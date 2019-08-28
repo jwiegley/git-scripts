@@ -215,8 +215,10 @@ function AssertIsNotBareRepo
 function GetRefs # (refs_dir)
 {
   local refs_dir=$1
+  local fmt='%(refname:short) %(upstream:short)'
+  local sort=$( (( $SHOW_DATES )) && echo '--sort=creatordate')
 
-  git for-each-ref --format="%(refname:short) %(upstream:short)" $refs_dir 2> /dev/null
+  git for-each-ref --format="$fmt" $sort $refs_dir 2> /dev/null
 }
 
 function GetLocalRefs
