@@ -1,5 +1,5 @@
 #!/bin/bash
-stash=$(git diff)
+stash=$(git diff --cached; git diff)
 if [[ ! -z "$stash" ]]; then
 	git stash
 fi
