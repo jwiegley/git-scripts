@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# From https://railsware.com/blog/git-housekeeping-tutorial-clean-up-outdated-branches-in-local-and-remote-repositories/
+
+for branch in $(git branch -r --merged | grep -v HEAD)
+do
+    echo -e $(git show --format="%ci %cr %an" $branch | head -n 1) \\t$branch
+done | sort -r
