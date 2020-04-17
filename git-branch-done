@@ -1,0 +1,16 @@
+#!/bin/bash
+# git branch-done <branch>
+
+# destination branch as parameter - depends on merge strategy, typically master
+DST_BRANCH=""
+if [ ! -z "$1" ]; then
+    DST_BRANCH="$1"
+else
+	echo "Usage: git branch-done <branch>"
+	exit 1
+fi
+
+# get  current branch - typically topic branch like taskXXXX, bugXXXX, ...
+cb=`git rev-parse --abbrev-ref HEAD`
+# no fast forward merge from current branch to destination branch
+git checkout $DST_BRANCH && git merge --no-ff $cb && git branch -d $cb
