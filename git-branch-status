@@ -112,16 +112,22 @@ EXAMPLES:
 USAGE_MSG
 
 
-## user-defined constants (see ./config.ini.example) ##
+## user-defined configuration (see ./gbs-config.sh.inc.example) ##
 
 readonly THIS_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo $0)")"
-readonly CFG_FILE=${THIS_DIR}/config.ini.example
-readonly LAST_FETCH_FILE=${THIS_DIR}/LAST_FETCH
-readonly CFG_FETCH_REGEX='/^\s*FETCH_PERIOD\s*=\s*-?[0-9]+/'
-readonly CFG_AWK_CMD='{ print ($2 + 0) }'
-
-declare -a cfg_fetch_period=($(awk -F '=' "${CFG_FETCH_REGEX}${CFG_AWK_CMD}" ${CFG_FILE} 2>/dev/null))
-readonly FETCH_PERIOD=$([ "${cfg_fetch_period[0]}" ] && echo ${cfg_fetch_period[0]} || echo '-1')
+readonly DEF_CFG_FILE="${THIS_DIR}"/gbs-config.sh.inc
+readonly CFG_FILE=$(        ( [[ "$GBS_CFG_FILE" && -f "$GBS_CFG_FILE" ]] && echo -n "$GBS_CFG_FILE"        ) || \
+                            ( [[ "$DEF_CFG_FILE" && -f "$DEF_CFG_FILE" ]] && echo -n "$DEF_CFG_FILE"        )    )
+source "$CFG_FILE" 2> /dev/null
+readonly FETCH_PERIOD=$(    ( [[ "$GBS_FETCH_PERIOD" =~ ^-?[0-9]+$     ]] && echo -n "$GBS_FETCH_PERIOD"    ) || \
+                            ( [[ "$CFG_FETCH_PERIOD" =~ ^-?[0-9]+$     ]] && echo -n "$CFG_FETCH_PERIOD"    ) || \
+                                                                             echo -n '-1'                        )
+readonly LAST_FETCH_FILE=$( ( touch "$GBS_LAST_FETCH_FILE" 2> /dev/null   && echo -n "$GBS_LAST_FETCH_FILE" ) || \
+                            ( touch "$CFG_LAST_FETCH_FILE" 2> /dev/null   && echo -n "$CFG_LAST_FETCH_FILE" ) || \
+                                                                             echo -n ~/.GBS_LAST_FETCH           )
+readonly USE_ANSI_COLOR=$(  ( [[ "$GBS_USE_ANSI_COLOR" =~ ^[01]$       ]] && echo -n "$GBS_USE_ANSI_COLOR"  ) || \
+                            ( [[ "$CFG_USE_ANSI_COLOR" =~ ^[01]$       ]] && echo -n "$CFG_USE_ANSI_COLOR"  ) || \
+                                                                             echo -n '1'                         )
 
 
 ## constants ##
@@ -133,12 +139,12 @@ readonly ALL_PADDING_W=$(( $INNER_PADDING_W + $MARGINS_PAD_W ))
 readonly MAX_DIVERGENCE_W=12 # e.g. "(behind 999)"
 readonly MIN_TTY_W=60 # ASSERT: (0 < (ALL_PADDING_W + (MAX_DIVERGENCE_W * 2)) <= MIN_TTY_W)
 readonly MARGIN_PAD=$(printf "%$(( $MARGIN_PAD_W ))s")
-readonly CWHITE='\033[0;37m'
-readonly CRED='\033[0;31m'
-readonly CGREEN='\033[0;32m'
-readonly CYELLOW='\033[1;33m'
-readonly CBLUE='\033[1;34m'
-readonly CEND='\033[0m'
+readonly CWHITE=$(  (( $USE_ANSI_COLOR )) && echo '\033[0;37m' )
+readonly CRED=$(    (( $USE_ANSI_COLOR )) && echo '\033[0;31m' )
+readonly CGREEN=$(  (( $USE_ANSI_COLOR )) && echo '\033[0;32m' )
+readonly CYELLOW=$( (( $USE_ANSI_COLOR )) && echo '\033[1;33m' )
+readonly CBLUE=$(   (( $USE_ANSI_COLOR )) && echo '\033[1;34m' )
+readonly CEND=$(    (( $USE_ANSI_COLOR )) && echo '\033[0m'    )
 readonly CDEFAULT=$CWHITE
 readonly CTRACKING=$CBLUE
 readonly CAHEAD=$CYELLOW
@@ -372,11 +378,11 @@ FetchRemotes()
 {
   if   (( ${FETCH_PERIOD} >= 0 ))
   then local now_ts=$(date +%s)
-       local last_fetch_ts=$(awk 'NR==1 { print ($1 + 0) }' ${LAST_FETCH_FILE} 2> /dev/null)
+       local last_fetch_ts=$(( $(cat ${LAST_FETCH_FILE} 2> /dev/null) + 0 ))
 
-       if   (( ${now_ts} - (${last_fetch_ts} + 0) >= ${FETCH_PERIOD} * 60 ))
+       if   (( ${now_ts} - ${last_fetch_ts} >= ${FETCH_PERIOD} * 60 ))
        then git fetch --all
-            echo ${now_ts} > ${LAST_FETCH_FILE}
+            echo -n ${now_ts} > ${LAST_FETCH_FILE}
        fi
   fi
 }
