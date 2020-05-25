@@ -5,7 +5,7 @@
 #  Copyright 2011      Jehiah Czebotar     <https://github.com/jehiah>
 #  Copyright 2013      Fredrik Strandin    <https://github.com/kd35a>
 #  Copyright 2014      Kristijan Novoselić <https://github.com/knovoselic>
-#  Copyright 2014-2018 bill-auger          <https://github.com/bill-auger>
+#  Copyright 2014-2020 bill-auger          <https://github.com/bill-auger>
 #
 #  git-branch-status is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License version 3
@@ -53,16 +53,16 @@ EXAMPLES:
     | feature-branch | (even)     | (ahead 2) | origin/feature-branch |
     | master         | (behind 1) | (even)    | origin/master         |
 
-  # compare two arbitrary branches (either local and either remote)
+  # compare two arbitrary branches - local or remote
   $ git-branch-status local-arbitrary-branch fork/arbitrary-branch
     | local-arbitrary-branch | (even)     | (ahead 1) | fork/arbitrary-branch  |
   $ git-branch-status fork/arbitrary-branch local-arbitrary-branch
     | fork/arbitrary-branch  | (behind 1) | (even)    | local-arbitrary-branch |
 
-  # show all branches - including those synchronized, non-tracking, or not checked-out
+  # show all branches - local and remote, regardless of state or relationship
   $ git-branch-status -a
   $ git-branch-status --all
-    | master         | (even)     | (ahead 1) | origin/master             |
+   *| master         | (even)     | (ahead 1) | origin/master             |
     | tracked-branch | (even)     | (even)    | origin/tracked-branch     |
     | (no local)     | n/a        | n/a       | origin/untracked-branch   |
     | local-branch   | n/a        | n/a       | (no upstream)             |
@@ -72,7 +72,7 @@ EXAMPLES:
   # show the current branch
   $ git-branch-status -b
   $ git-branch-status --branch
-    | current-branch | (even) | (ahead 2) | origin/current-branch |
+   *| current-branch | (even) | (ahead 2) | origin/current-branch |
 
   # show a specific branch
   $ git-branch-status          specific-branch
@@ -93,7 +93,7 @@ EXAMPLES:
   # show all local branches - including those synchronized or non-tracking
   $ git-branch-status -l
   $ git-branch-status --local
-    | master         | (even)     | (ahead 1) | origin/master         |
+   *| master         | (even)     | (ahead 1) | origin/master         |
     | tracked-branch | (even)     | (even)    | origin/tracked-branch |
     | local-branch   | n/a        | n/a       | (no upstream)         |
 
@@ -106,9 +106,9 @@ EXAMPLES:
   # show all branches with timestamps (like -a -d)
   $ git-branch-status -v
   $ git-branch-status --verbose
-    | 1999-12-31 local   | n/a        | n/a    | (no upstream)             |
-    | 1999-12-31 master  | (behind 1) | (even) | 2000-01-01 origin/master  |
-    | 1999-12-31 tracked | (even)     | (even) | 2000-01-01 origin/tracked |
+    | 1999-12-31 master    | (behind 1) | (even) | 2000-01-01 origin/master  |
+    | 1999-12-31 tracked   | (even)     | (even) | 2000-01-01 origin/tracked |
+   *| 1999-12-31 local-wip | n/a        | n/a    | (no upstream)             |
 USAGE_MSG
 
 
@@ -131,7 +131,7 @@ readonly MARGIN_PAD_W=2
 readonly MARGINS_PAD_W=$(( $MARGIN_PAD_W * 2 ))
 readonly ALL_PADDING_W=$(( $INNER_PADDING_W + $MARGINS_PAD_W ))
 readonly MAX_DIVERGENCE_W=12 # e.g. "(behind 999)"
-readonly MIN_TTY_W=60 # ASSERT: (0 < ($ALL_PADDING_W + (MAX_DIVERGENCE_W * 2)) <= $MIN_TTY_W)
+readonly MIN_TTY_W=60 # ASSERT: (0 < (ALL_PADDING_W + (MAX_DIVERGENCE_W * 2)) <= MIN_TTY_W)
 readonly MARGIN_PAD=$(printf "%$(( $MARGIN_PAD_W ))s")
 readonly CWHITE='\033[0;37m'
 readonly CRED='\033[0;31m'
@@ -196,23 +196,23 @@ declare -a RemoteColors=()
 
 ## helpers ##
 
-function AssertIsValidRepo
+AssertIsValidRepo()
 {
   [ "$(git rev-parse --is-inside-work-tree 2> /dev/null)" == 'true' ] || \
   ! (( $(AssertIsNotBareRepo) ))                                      && echo 1 || echo 0
 }
 
-function AssertHasCommits
+AssertHasCommits()
 {
   [ "$(git cat-file -t HEAD 2> /dev/null)" ] && echo 1 || echo 0
 }
 
-function AssertIsNotBareRepo
+AssertIsNotBareRepo()
 {
   [ "$(git rev-parse --is-bare-repository 2> /dev/null)" != 'true' ] && echo 1 || echo 0
 }
 
-function GetRefs # (refs_dir)
+GetRefs() # (refs_dir)
 {
   local refs_dir=$1
   local fmt='%(refname:short) %(upstream:short)'
@@ -221,19 +221,19 @@ function GetRefs # (refs_dir)
   git for-each-ref --format="$fmt" $sort $refs_dir 2> /dev/null
 }
 
-function GetLocalRefs
+GetLocalRefs()
 {
   GetRefs refs/heads
 }
 
-function GetRemoteRefs # (remote_repo_name)
+GetRemoteRefs() # (remote_repo_name)
 {
   local remote_repo=$1
 
   GetRefs refs/remotes/$remote_repo
 }
 
-function GetStatus # (base_commit compare_commit)
+GetStatus() # (base_commit compare_commit)
 {
   local base_commit=$1
   local compare_commit=$2
@@ -241,19 +241,19 @@ function GetStatus # (base_commit compare_commit)
   git rev-list --left-right ${base_commit}...${compare_commit} -- 2>/dev/null
 }
 
-function GetCurrentBranch
+GetCurrentBranch()
 {
   git rev-parse --abbrev-ref HEAD
 }
 
-function GetUpstreamBranch # (local_branch)
+GetUpstreamBranch() # (local_branch)
 {
   local local_branch=$1
 
   git rev-parse --abbrev-ref $local_branch@{upstream} 2> /dev/null
 }
 
-function IsCurrentBranch # (branch_name)
+IsCurrentBranch() # (branch_name)
 {
   local branch=$1
   local this_branch=$(AppendHeadDate $branch)
@@ -262,7 +262,7 @@ function IsCurrentBranch # (branch_name)
   [ "$this_branch" == "$current_branch" ] && echo 1 || echo 0
 }
 
-function IsLocalBranch # (branch_name)
+IsLocalBranch() # (branch_name)
 {
   local branch=$1
   local is_local_branch=$(git branch -a | grep -E "^.* $branch$")
@@ -270,7 +270,7 @@ function IsLocalBranch # (branch_name)
   [ "$is_local_branch" ] && echo 1 || echo 0
 }
 
-function IsTrackedBranch # (base_branch_name compare_branch_name)
+IsTrackedBranch() # (base_branch_name compare_branch_name)
 {
   local base_branch=$1
   local compare_branch=$2
@@ -279,7 +279,7 @@ function IsTrackedBranch # (base_branch_name compare_branch_name)
   [ "$compare_branch" == "$upstream_branch" ] && echo 1 || echo 0
 }
 
-function DoesBranchExist # (branch_name)
+DoesBranchExist() # (branch_name)
 {
   local branch=$1
   local is_known_branch=$(git branch -a | grep -E "^.* (remotes\/)?$branch$")
@@ -287,7 +287,7 @@ function DoesBranchExist # (branch_name)
   [ "$is_known_branch" ] && echo 1 || echo 0
 }
 
-function AppendHeadDate # (commit_ref)
+AppendHeadDate() # (commit_ref)
 {
   local commit=$1
   local author_date=$(git log -n 1 --format=format:"%ai" $commit 2> /dev/null)
@@ -298,7 +298,7 @@ function AppendHeadDate # (commit_ref)
   echo $date$commit
 }
 
-function CurrentTtyW
+CurrentTtyW()
 {
   local tty_dims=$(stty -F /dev/tty size 2> /dev/null || stty -f /dev/tty size 2> /dev/null)
   local tty_w=$(echo $tty_dims | cut -d ' ' -f 2)
@@ -306,7 +306,7 @@ function CurrentTtyW
   (( $tty_w )) && echo "$tty_w" || echo "$MIN_TTY_W"
 }
 
-function PrintHRule # (rule_width)
+PrintHRule() # (rule_width)
 {
   local rule_w=$1
   local h_rule="$(dd if=/dev/zero bs=$rule_w count=1 2> /dev/null | tr '\0' $HRULE_CHAR)"
@@ -314,7 +314,7 @@ function PrintHRule # (rule_width)
   echo "$MARGIN_PAD$h_rule"
 }
 
-function EXIT # (exit_msg exit_status)
+Exit() # (exit_msg exit_status)
 {
   local exit_msg=$1
   local exit_status=$2
@@ -328,7 +328,7 @@ function EXIT # (exit_msg exit_status)
 
 ## business ##
 
-function Init # (cli_args)
+Init() # (cli_args)
 {
   local show_dates=0
   local show_all=0
@@ -343,7 +343,7 @@ function Init # (cli_args)
        '-a'|'--all'     ) show_all=1                                                ;;
        '-b'|'--branch'  ) [ "$2" ] && branch_a="$2" || branch_a=$(GetCurrentBranch) ;;
        '-d'|'--dates'   ) branch_a="$2"     ; branch_b="$3"     ; show_dates=1      ;;
-       '-h'|'--help'    ) EXIT "$USAGE" $EXIT_SUCCESS                               ;;
+       '-h'|'--help'    ) Exit "$USAGE" $EXIT_SUCCESS                               ;;
        '-l'|'--local'   ) show_all_local=1  ; show_all_synced=1 ;                   ;;
        '-r'|'--remotes' ) show_all_remote=1 ; show_all_synced=1 ;                   ;;
        '-v'|'--verbose' ) show_all=1        ; show_dates=1      ;                   ;;
@@ -351,13 +351,13 @@ function Init # (cli_args)
   esac
 
   # sanity checks
-  (( $(AssertIsValidRepo  )       ))                                        || EXIT "$NOT_REPO_ERR"
-  (( $(AssertIsNotBareRepo)       ))                                        || EXIT "$BARE_REPO_MSG"
-  (( $(AssertHasCommits   )       ))                                        || EXIT "$NO_COMMITS_MSG"
-  (( $(CurrentTtyW) >= $MIN_TTY_W ))                                        || EXIT "$TTY_W_MSG"
-  [ -z "$branch_a" ] || (($(DoesBranchExist $branch_a)))                    || EXIT "$INVALID_BRANCH_MSG '$branch_a'"
-  [ -z "$branch_b" ] || (($(DoesBranchExist $branch_b)))                    || EXIT "$INVALID_BRANCH_MSG '$branch_b'"
-  [ -z "$branch_a" ] || (($(IsLocalBranch   $branch_a))) || [ "$branch_b" ] || EXIT "$INVALID_LOCAL_BRANCH_MSG '$branch_a'"
+  (( $(AssertIsValidRepo  )       ))                                        || Exit "$NOT_REPO_ERR"
+  (( $(AssertIsNotBareRepo)       ))                                        || Exit "$BARE_REPO_MSG"
+  (( $(AssertHasCommits   )       ))                                        || Exit "$NO_COMMITS_MSG"
+  (( $(CurrentTtyW) >= $MIN_TTY_W ))                                        || Exit "$TTY_W_MSG"
+  [ -z "$branch_a" ] || (($(DoesBranchExist $branch_a)))                    || Exit "$INVALID_BRANCH_MSG '$branch_a'"
+  [ -z "$branch_b" ] || (($(DoesBranchExist $branch_b)))                    || Exit "$INVALID_BRANCH_MSG '$branch_b'"
+  [ -z "$branch_a" ] || (($(IsLocalBranch   $branch_a))) || [ "$branch_b" ] || Exit "$INVALID_LOCAL_BRANCH_MSG '$branch_a'"
   [ -z "$branch_a" ] || show_all_local=1 # force "no upstream" message for non-tracking branches
 
   readonly SHOW_DATES=$show_dates
@@ -368,7 +368,7 @@ function Init # (cli_args)
   readonly COMPARE_BRANCH=$branch_b
 }
 
-function FetchRemotes
+FetchRemotes()
 {
   if   (( ${FETCH_PERIOD} >= 0 ))
   then local now_ts=$(date +%s)
@@ -381,7 +381,7 @@ function FetchRemotes
   fi
 }
 
-function GenerateReports
+GenerateReports()
 {
   if   [ "$COMPARE_BRANCH" ]
   then CustomReport $(IsTrackedBranch $FILTER_BRANCH $COMPARE_BRANCH)
@@ -390,7 +390,7 @@ function GenerateReports
   fi
 }
 
-function CustomReport # (is_tracked_branch)
+CustomReport() # (is_tracked_branch)
 {
   local is_tracked_branch=$1
   local synchronized_msg
@@ -401,7 +401,7 @@ function CustomReport # (is_tracked_branch)
   PrintReport "$FILTER_BRANCH <-> $COMPARE_BRANCH" "$synchronized_msg"
 }
 
-function LocalReport
+LocalReport()
 {
   local synchronized_msg
   [ "$FILTER_BRANCH" ] && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$LOCALS_SYNCED_MSG"
@@ -411,7 +411,7 @@ function LocalReport
   PrintReport "local <-> upstream" "$synchronized_msg"
 }
 
-function RemoteReport
+RemoteReport()
 {
   local synchronized_msg="$REMOTES_SYNCED_MSG"
   local remote_repo
@@ -428,7 +428,7 @@ function RemoteReport
   done
 }
 
-function GenerateReport # (base_branch compare_branch)
+GenerateReport() # (base_branch compare_branch)
 {
   local base_branch=$1
   local compare_branch=$2
@@ -506,7 +506,7 @@ function GenerateReport # (base_branch compare_branch)
   if [ ${#remote_msg} -gt $RemoteW ] ; then RemoteW=${#remote_msg} ; fi ;
 }
 
-function PrintReport # (table_header_line synchronized_msg)
+PrintReport() # (table_header_line synchronized_msg)
 {
   local table_header_line=$1
   local synchronized_msg=$2
@@ -573,7 +573,7 @@ function PrintReport # (table_header_line synchronized_msg)
   Reset
 }
 
-function PrintReportLine
+PrintReportLine()
 {
   # select data
   local local_msg=$( echo ${LocalMsgs[ $result_n]}         | sed "$JOIN_REGEX")
@@ -605,7 +605,7 @@ function PrintReportLine
   printf "$local_msg$behind_msg$ahead_msg$remote_msg$end_msg\n"
 }
 
-function Reset
+Reset()
 {
   WereAnyDivergences=0
   WereAnyCompared=0
