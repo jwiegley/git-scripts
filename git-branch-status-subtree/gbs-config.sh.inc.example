@@ -1,0 +1,28 @@
+###############################################################################
+#  optional user-defined config for the 'git-branch-status' program           #
+#-----------------------------------------------------------------------------#
+#  * copy this file to: ./gbs-config.sh.inc (or $GBS_CFG_FILE) to customize   #
+#  * the text in this file must be valid BASH                                 #
+#  * you can also export these configuration options from the environment     #
+#      as well as an alternate location of this file (as $GBS_CFG_FILE)       #
+#  * environment variables will over-ride those defined in this file          #
+#  * environment variables should be named similarly to those in this file    #
+#      with the CFG_* prefix replaced with GBS_*                              #
+#      eg: export GBS_CFG_FILE=~/.config/git-branch-status/config.sh.inc      #
+#      eg: export GBS_FETCH_PERIOD=0                                          #
+###############################################################################
+
+
+# number of minutes between automatic `git fetch --all` calls
+#   0 => always, -1 => never (default: -1)
+readonly CFG_FETCH_PERIOD=-1
+
+
+# writable filesystem location for storage of the last-fetch timestamp
+#   (default: ~/.GBS_LAST_FETCH)
+readonly CFG_LAST_FETCH_FILE=~/.GBS_LAST_FETCH
+
+
+# whether or not to present ANSI colors
+#   0 => no, 1 => yes (default: 1)
+readonly CFG_USE_ANSI_COLOR=1
