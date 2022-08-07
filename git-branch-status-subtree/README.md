@@ -58,16 +58,16 @@ EXAMPLES:
     | feature-branch | (even)     | (ahead 2) | origin/feature-branch |
     | master         | (behind 1) | (even)    | origin/master         |
 
-  # compare two arbitrary branches (either local and either remote)
+  # compare two arbitrary branches - local or remote
   $ git-branch-status local-arbitrary-branch fork/arbitrary-branch
     | local-arbitrary-branch | (even)     | (ahead 1) | fork/arbitrary-branch  |
   $ git-branch-status fork/arbitrary-branch local-arbitrary-branch
     | fork/arbitrary-branch  | (behind 1) | (even)    | local-arbitrary-branch |
 
-  # show all branches - including those synchronized, non-tracking, or not checked-out
+  # show all branches - local and remote, regardless of state or relationship
   $ git-branch-status -a
   $ git-branch-status --all
-    | master         | (even)     | (ahead 1) | origin/master             |
+   *| master         | (even)     | (ahead 1) | origin/master             |
     | tracked-branch | (even)     | (even)    | origin/tracked-branch     |
     | (no local)     | n/a        | n/a       | origin/untracked-branch   |
     | local-branch   | n/a        | n/a       | (no upstream)             |
@@ -77,7 +77,7 @@ EXAMPLES:
   # show the current branch
   $ git-branch-status -b
   $ git-branch-status --branch
-    | current-branch | (even) | (ahead 2) | origin/current-branch |
+   *| current-branch | (even) | (ahead 2) | origin/current-branch |
 
   # show a specific branch
   $ git-branch-status          specific-branch
@@ -98,7 +98,7 @@ EXAMPLES:
   # show all local branches - including those synchronized or non-tracking
   $ git-branch-status -l
   $ git-branch-status --local
-    | master         | (even)     | (ahead 1) | origin/master         |
+   *| master         | (even)     | (ahead 1) | origin/master         |
     | tracked-branch | (even)     | (even)    | origin/tracked-branch |
     | local-branch   | n/a        | n/a       | (no upstream)         |
 
@@ -111,9 +111,9 @@ EXAMPLES:
   # show all branches with timestamps (like -a -d)
   $ git-branch-status -v
   $ git-branch-status --verbose
-    | 1999-12-31 local   | n/a        | n/a    | (no upstream)             |
-    | 1999-12-31 master  | (behind 1) | (even) | 2000-01-01 origin/master  |
-    | 1999-12-31 tracked | (even)     | (even) | 2000-01-01 origin/tracked |
+    | 1999-12-31 master    | (behind 1) | (even) | 2000-01-01 origin/master  |
+    | 1999-12-31 tracked   | (even)     | (even) | 2000-01-01 origin/tracked |
+   *| 1999-12-31 local-wip | n/a        | n/a    | (no upstream)             |
 ```
 
 
