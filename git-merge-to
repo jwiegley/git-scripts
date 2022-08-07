@@ -1,0 +1,16 @@
+#!/bin/bash
+# git merge-to <branch>
+
+# destination branch as parameter - depends on merge strategy, typically release
+DST_BRANCH=""
+if [ ! -z "$1" ]; then
+    DST_BRANCH="$1"
+else
+	echo "Usage: git merge-to <branch>"
+	exit 1
+fi
+
+# get  current branch - typically master or develop
+cb=`git rev-parse --abbrev-ref HEAD`
+# no fast forward merge from current branch to destination branch
+git checkout $DST_BRANCH && git merge --ff $cb && git co $cb
