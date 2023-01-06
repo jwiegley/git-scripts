@@ -31,12 +31,12 @@
 
 URL=$1
 
-function error {
+error() {
   echo $*
   exit 1
 }
 
-if [[ ! $URL ]]; then
+if [ ! $URL ]; then
   error $0 URL
 fi
 
