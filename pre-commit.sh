@@ -12,22 +12,22 @@ MIRROR=$HOME/Products/ledger-pre-commit-mirror
 set -e
 
 # Checkout a copy of the current index into MIRROR
-git checkout-index --prefix=$MIRROR/ -af
+git checkout-index --prefix="$MIRROR/" -af
 
 # Remove files from MIRROR which are no longer present in the index
 git diff-index --cached --name-only --diff-filter=D -z HEAD | \
-    (cd $MIRROR && xargs -0 rm -f --)
+    (cd "$MIRROR" && xargs -0 rm -f --)
 
 # Copy only _changed files_ from MIRROR to TMPDIR, without copying timestamps.
 # This includes copying over new files, and deleting removed ones.  This way,
 # "make check" will only rebuild what is necessary to validate the commit.
-rsync -rlpgoDOc --delete --exclude-from=tools/excludes $MIRROR/ $TMPDIR/
+rsync -rlpgoDOc --delete --exclude-from=tools/excludes "$MIRROR/" "$TMPDIR/"
 
 # Everything else happens in the temporary build tree
-if [ ! -f $TMPDIR/lib/utfcpp/source/utf8.h ]; then
-    rsync -a --delete lib/utfcpp/ $TMPDIR/lib/utfcpp/
+if [ ! -f "$TMPDIR/lib/utfcpp/source/utf8.h" ]; then
+    rsync -a --delete lib/utfcpp/ "$TMPDIR/lib/utfcpp/"
 fi
-cd $TMPDIR
+cd "$TMPDIR"
 
 # Make sure there is a current Makefile.  Regeneration of Makefile happens
 # automatically, but if myacprep or acprep changes, we want to regenerate
