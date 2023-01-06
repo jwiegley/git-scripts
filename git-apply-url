@@ -40,9 +40,9 @@ if [[ ! $URL ]]; then
   error $0 URL
 fi
 
-if [[ -x $(which curl) && $(curl -V | grep https) ]]; then
+if [ -x $(command -v curl) ] && [ $(curl -V | grep https) ]; then
   fetch="curl -s"
-elif [[ -x $(which wget) ]]; then
+elif [ -x $(command -v wget) ]; then
   fetch="wget -O - -q --no-check-certificate"
 else
   error need curl or wget

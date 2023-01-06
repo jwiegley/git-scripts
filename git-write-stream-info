@@ -30,7 +30,7 @@ else
 	to=$2
 fi
 
-file_name=`echo $from | sed 's/\//_/g'`--`echo $to | sed 's/\//_/g'`---$date
+file_name=$(echo $from | sed 's/\//_/g'`--`echo $to | sed 's/\//_/g')---$date
 file=$where/$file_name
 last=$where/last
 

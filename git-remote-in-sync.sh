@@ -13,10 +13,10 @@
 # written by Dieter Plaetinck
 
 list="$@"
-[ -z "$list" ] && list=`git remote`
+[ -z "$list" ] && list=$(git remote)
 ret=0
 
-if [ -z "`git branch`" ]
+if [ -z "$(git branch)" ]
 then
 	if [ $(cd $(git root) && ls -Al | egrep -v "^(.git|total)" | wc -l) -gt 0 ]
 	then
@@ -42,7 +42,7 @@ else
 	if [ -n "$@" ]
 	then
 		echo "INFO: working with remote(s): $@"
-		echo "INFO: fyi, all remotes: "`git remote`
+		echo "INFO: fyi, all remotes: "$(git remote)
 	else
 		echo "INFO: working with all remotes: $list"
 	fi
@@ -64,7 +64,7 @@ do
 	fi
 	IFS_BACKUP=$IFS
 	IFS=$'\n'
-	for branch in `git branch`
+	for branch in $(git branch)
 	do
 		branch=${branch/\*/};
 		branch_local=${branch// /}; # git branch prefixes branches with spaces. and spaces in branchnames are illegal.
@@ -86,27 +86,27 @@ do
 	IFS=$IFS_BACKUP
 
 	# Check tags
-	out=`git push --tags -n $remote 2>&1`
+	out=$(git push --tags -n $remote 2>&1)
 	if [ "$out" != 'Everything up-to-date' ];
 	then
 		echo -e "  WARN: Some tags are not in $remote!\n$out" >&2
 		ret=1
 	else
-		echo "  INFO: All tags ("`git tag`") exist at $remote as well"
+		echo "  INFO: All tags ("$(git tag)") exist at $remote as well"
 	fi
 done
 
 # Check WC/index
-cur_branch=`git branch | grep '^\* ' | cut -d ' ' -f2`
+cur_branch=$(git branch | grep '^\* ' | cut -d ' ' -f2)
 cur_branch=${cur_branch// /}
 exp="# On branch $cur_branch
 nothing to commit (working directory clean)"
-out=`git status`
+out=$(git status)
 wc_ok=1
 if [ "$out" != "$exp" ]
 then
 	# usually i'd use bash regex, but this case is multiple-lines so bash regex is no go
-	out=$(echo "$out" | egrep -v "^(# On branch $cur_branch|# Your branch is behind .* commits, and can be fast-forwarded.|#|nothing to commit \(working directory clean\))$")
+	out=$(echo "$out" | grep -E -v "^(# On branch $cur_branch|# Your branch is behind .* commits, and can be fast-forwarded.|#|nothing to commit \(working directory clean\))$")
 	if [ -n "$out" ]
 	then
 		wc_ok=0
@@ -122,7 +122,7 @@ then
 fi
 
 # Check stash
-if [ `git stash list | wc -l` -gt 0 ];
+if [ $(git stash list | wc -l) -gt 0 ];
 then
 	echo "WARN: Dirty stash:" >&2
 	GIT_PAGER= git stash list >&2
