@@ -71,7 +71,6 @@ display_help() {
     -h, --help                      Display this help information
 
 EOF
-	exit 0
 }
 
 
