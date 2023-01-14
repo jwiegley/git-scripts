@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # To be used with the git-save-* scripts @ https://github.com/jwiegley/git-scripts
 mypath=$(dirname $0)

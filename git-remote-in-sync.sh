@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # checks if the specified remote(s) are in sync with what we have
 # in other words: do we have anything which is not at the remote?
 # Any commit, tag, branch, dirty WC/index or stashed state?

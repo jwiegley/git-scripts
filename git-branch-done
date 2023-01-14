@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # git branch-done <branch>
 
 # destination branch as parameter - depends on merge strategy, typically master

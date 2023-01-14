@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # take a file/directory as arg1, to be added to ignore rules.
 # the user selects which ignore rules using dmenu
 # in the .gitconfig case, we should probably allow the user to edit it,

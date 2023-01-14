@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if ! git config --get-all remote.origin.fetch | grep -q '/pr/'; then
     git config --add remote.origin.fetch '+refs/pull/*:refs/remotes/origin/pr/*'

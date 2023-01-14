@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 stat=true
 if [[ "$1" == "-p" ]]; then
