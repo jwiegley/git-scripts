@@ -12,7 +12,6 @@ else
 fi
 
 commit=$(for i in $all; do
-	echo -n "$i "
 	printf '%s\n' "$i "
 	# why is there no git diff --shortnumstat ?
 	git diff -M $spec $i | wc -l
