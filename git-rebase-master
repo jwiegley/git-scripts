@@ -1,5 +1,5 @@
-#!/bin/bash -e
-
+#!/bin/bash
+set -e
 git checkout master
 git pull --ff-only
 git checkout -

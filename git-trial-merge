@@ -1,3 +1,4 @@
-#!/bin/sh -xe
+#!/bin/sh
+set -xe
 git checkout --detach HEAD
 git merge --no-edit -- "$@"

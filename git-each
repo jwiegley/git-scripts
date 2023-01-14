@@ -1,4 +1,5 @@
-#!/bin/bash -e
+#!/bin/bash
+set -e
 
 DIRS="."
 if [[ "$1" == --dir ]]; then
