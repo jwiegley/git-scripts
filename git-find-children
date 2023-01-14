@@ -7,5 +7,6 @@ fi
 for ref in "$@"; do
     for sha1 in $(git rev-list "$@")
     do
+        :
     done
 done

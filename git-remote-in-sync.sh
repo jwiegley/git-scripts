@@ -18,10 +18,10 @@ ret=0
 
 if [ -z "$(git branch)" ]
 then
-	if [ $(cd $(git root) && ls -Al | egrep -v "^(.git|total)" | wc -l) -gt 0 ]
+	if [ $(cd "$(git root)" && ls -Al | egrep -v "^(.git|total)" | wc -l) -gt 0 ]
 	then
 		echo "WARN: This repo doesn't contain any branch, but contains a bunch of files!" >&2
-		ls -Alh $(git root)
+		ls -Alh "$(git root)"
 		ret=1
 	else
 		echo "INFO: This repo doesn't contain any branch, and is empty"

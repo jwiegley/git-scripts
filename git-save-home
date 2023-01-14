@@ -15,7 +15,7 @@
 
 MODIFIED=$(git status | grep modified | cut -d " " -f 3-)
 
-if [ "x$MODIFIED" == x ]; then
+if [ -n "$MODIFIED" ]; then
   echo no changes
 else
   git add -f $MODIFIED \

@@ -6,9 +6,9 @@ if [ -n "$1" ]
 then
 	if [ -d "$1" ]
 	then
-		cd $1
+		cd "$1"
 	else
-		cd $(dirname $1)
+		cd "$(dirname "$1")"
 	fi
 fi
 exec git rev-parse --show-toplevel

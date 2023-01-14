@@ -19,7 +19,7 @@ function clone {
   $GIT clone -q $1 $2
   res=$?
   
-  cd $2
+  cd "$2"
   
   $GIT pull --all
   
@@ -29,4 +29,4 @@ function clone {
 }
 
 echo "cloning repository into ... $2"
-clone $1 $2
+clone $1 "$2"
