@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 for hash in $(grep ^commit | awk '{print $2}'); do
     git diff-directory $1 $hash

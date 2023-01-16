@@ -1,5 +1,5 @@
-#!/bin/bash -e
-
+#!/usr/bin/env bash
+set -e
 newbranch=$1
 remote=${2:-origin/master}
 

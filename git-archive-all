@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Super basic tool to export repo and all submodules
 # as a single zip file

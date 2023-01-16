@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # If you are using MacPorts, you'll need to install 'patchutils'
 

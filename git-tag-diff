@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Show the differences between local tags and ones on the remote, if any
 # (defaults to origin, but another remote may be specified on the commandline)
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 current=$(git symbolic-ref HEAD | sed 's%refs/heads/%%')
 branch=$1

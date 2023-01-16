@@ -1,4 +1,4 @@
-#/bin/bash
+#!/usr/bin/env bash
 
 # this script clones a repository, including all its remote branches
 # Author: julianromera
