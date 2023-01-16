@@ -9,7 +9,7 @@ then
 	then
 		cd "$1"
 	else
-		cd "`dirname $1`"
+		cd "$(dirname "$1")"
 	fi
 fi
 exec git rev-parse --show-toplevel

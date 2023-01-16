@@ -11,6 +11,6 @@ else
 fi
 
 # get  current branch - typically master or develop
-cb=`git rev-parse --abbrev-ref HEAD`
+cb=$(git rev-parse --abbrev-ref HEAD)
 # no fast forward merge from current branch to destination branch
 git checkout $DST_BRANCH && git merge --ff $cb && git co $cb

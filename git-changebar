@@ -37,25 +37,25 @@ $1
       OUT="${FILE%.tex}.diff.tex"
       cp "$FILE" "$OUT"
 
-      docstart=`grep -n 'begin{document}' "$FILE" | cut -d: -f1`
+      docstart=$(grep -n 'begin{document}' "$FILE" | cut -d: -f1)
 
-      for i in `GIT_DIFF_OPTS=-u0 git diff "$REV" "$FILE" | 
-                sed -n '/^@@/s/@@ -[0-9,]* +\([0-9,]*\).*/\1/p'`
+      for i in $(GIT_DIFF_OPTS=-u0 git diff "$REV" "$FILE" | 
+                sed -n '/^@@/s/@@ -[0-9,]* +\([0-9,]*\).*/\1/p')
       do
-         start=`cut -d, -f1 <<@
+         start=$(cut -d, -f1 <<@
 $i
 @
-`
+)
          if [ "$start" -gt "$docstart" ]
          then
             if grep ',' >/dev/null <<@
 $i
 @
             then
-               diff=`cut -d, -f2 <<@ 
+               diff=$(cut -d, -f2 <<@ 
 $i
 @
-`
+)
             else
                diff=0
             fi

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-if [ -z "$1" -o -z "$2" ]
+if [ -z "$1" ] || [ -z "$2" ]
 then
 	echo "usage: $0 <from> <to>" >&2
 	exit 2
