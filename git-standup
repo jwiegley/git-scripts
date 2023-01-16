@@ -36,7 +36,7 @@ fi
 # which may fail on systems lacking tput or terminfo
 set -e
 
-AUTHOR=${1:-"`git config user.name`"}
+AUTHOR=${1:-"$(git config user.name)"}
 
 WEEKSTART="$( cut -d '-' -f 1 <<< "$2" )";
 WEEKSTART=${WEEKSTART:="Mon"}

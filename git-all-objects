@@ -2,7 +2,7 @@
 set -e
 shopt -s nullglob extglob
 
-cd "`git rev-parse --git-path objects`"
+cd "$(git rev-parse --git-path objects)"
 
 # packed objects
 for p in pack/pack-*([0-9a-f]).idx ; do
