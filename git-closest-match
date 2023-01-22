@@ -8,18 +8,18 @@ range=${3:-30} # 'all' or most recent <num> in current branch?. 'all' can be qui
 if [ "$range" = 'all' ]; then
 	all=$(git rev-list --all | awk '/^commit/ {print $NF}')
 else
-	all=$(git log -n $range | awk '/^commit/ {print $NF}')
+	all=$(git log -n "$range" | awk '/^commit/ {print $NF}')
 fi
 
 commit=$(for i in $all; do
 	printf '%s\n' "$i "
 	# why is there no git diff --shortnumstat ?
-	git diff -M $spec $i | wc -l
+	git diff -M "$spec" $i | wc -l
 done | sort -k 2 -n | head -n 1 | cut -f 1 -d ' ')
 if [ "$mode" = diff ]; then
-	git log --no-walk $commit | cat -
-	git diff -M $spec $commit | cat -
+	git log --no-walk "$commit" | cat -
+	git diff -M "$spec" "$commit" | cat -
 else
 	printf '%s\n' "$commit: "
-	 git diff -M $spec $commit | wc -l
+	 git diff -M "$spec" "$commit" | wc -l
 fi

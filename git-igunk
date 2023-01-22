@@ -1,5 +1,5 @@
 #!/bin/sh
 
-git ls-files --other --exclude-standard | while read path; do
+git ls-files --other --exclude-standard | while read -r path; do
     echo "/$path" >> .gitignore
 done

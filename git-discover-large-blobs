@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#set -x 
+#set -x
 
 # Shows you the largest objects in your repo's pack file.
 #
@@ -18,9 +18,9 @@
 IFS=$'\n';
 
 # find top-level dir of a non-bare repo
-_GIT_DIR=`git rev-parse --show-toplevel` || exit 1
+_GIT_DIR=$(git rev-parse --show-toplevel) || exit 1
 
-if [ -n ${_GIT_DIR} ] && [ -d ${_GIT_DIR}/.git/objects/pack ]; then
+if [ -n "${_GIT_DIR}" ] && [ -d "${_GIT_DIR}"/.git/objects/pack ]; then
 	PACK_DIR=${_GIT_DIR}/.git/objects/pack
 elif [ -d ./objects/pack ]; then
 	# bare repo
@@ -29,9 +29,9 @@ else
 	echo "Cannot locate pack directory"
 	exit 1
 fi
-	
+
 # list all objects including their size, sort by size, take top 10
-objects=`git verify-pack -v ${PACK_DIR}/pack-*.idx | grep -v chain | sort -k3nr | head`
+objects=$(git verify-pack -v "${PACK_DIR}"/pack-*.idx | grep -v chain | sort -k3nr | head)
 
 echo "All sizes are in kB's. The pack column is the size of the object, compressed, inside the pack file."
 
@@ -39,15 +39,15 @@ output="size,pack,SHA,location"
 for y in $objects
 do
 	# extract the size in bytes
-	size=$((`echo $y | cut -f 5 -d ' '`/1024))
+	size=$(($(echo $y | cut -f 5 -d ' ')/1024))
 	# extract the compressed size in bytes
-	compressedSize=$((`echo $y | cut -f 6 -d ' '`/1024))
+	compressedSize=$(($(echo $y | cut -f 6 -d ' ')/1024))
 	# extract the SHA
-	sha=`echo $y | cut -f 1 -d ' '`
+	sha=$(echo $y | cut -f 1 -d ' ')
 	# find the objects location in the repository tree
-	other=`git rev-list --all --objects | grep $sha`
+	other=$(git rev-list --all --objects | grep "$sha")
 	#lineBreak=`echo -e "\n"`
 	output="${output}\n${size},${compressedSize},${other}"
 done
 
-echo -e $output | column -t -s ', '
+echo -e "$output" | column -t -s ', '

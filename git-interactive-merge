@@ -6,10 +6,10 @@ then
 fi
 from=$1
 to=$2
-git checkout $from
-git checkout -b ${from}_tmp
+git checkout "$from"
+git checkout -b "${from}_tmp"
 # drops you in an editor, pick the changes you want
-git rebase -i $to
-git checkout $to
-git pull . ${from}_tmp
-git branch -d ${from}_tmp
+git rebase -i "$to"
+git checkout "$to"
+git pull . "${from}_tmp"
+git branch -d "${from}_tmp"

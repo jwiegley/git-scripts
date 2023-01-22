@@ -6,7 +6,7 @@
 # basename
 
 file=$1
-if [ -z "$file" -o ! -e "$file" ]
+if [[ -z "$file" || ! -e "$file" ]]
 then
 	echo 'No such file or directory' >&2
 	exit 2
@@ -21,24 +21,24 @@ exclude            # specific to it's repo, but irrelevant to other devs
 
 [ -z "$type" ] && echo 'Cancelled' && exit 0
 
-dirname=$( dirname  $file)
-basename=$(basename $file)
+dirname=$( dirname  "$file")
+basename=$(basename "$file")
 case $type in
 	.gitignore-root)
-		root=$(git root $file) || exit 2
-		dirname=$(readlink -f $dirname)
-		relative_dir=$(echo $dirname | sed "s#^$root##") # ie: /src
-		echo "$relative_dir/$basename" >> $root/.gitignore
+		root=$(git root "$file") || exit 2
+		dirname=$(readlink -f "$dirname")
+		relative_dir=$(echo "$dirname" | sed "s#^$root##") # ie: /src
+		echo "$relative_dir/$basename" >> "$root/.gitignore"
 		;;
 	.gitignore-dirname)
-		git root $file >/dev/null || exit 2
-		echo "$basename" >> $dirname/.gitignore
+		git root "$file ">/dev/null || exit 2
+		echo "$basename" >> "$dirname/.gitignore"
 		;;
 	exclude)
-		root=$(git root $file) || exit 2
-		dirname=$(readlink -f $dirname)
-		relative_dir=$(echo $dirname | sed "s#^$root##")
-		echo "$relative_dir/$basename" >> $root/info/exclude
+		root=$(git root "$file") || exit 2
+		dirname=$(readlink -f "$dirname")
+		relative_dir=$(echo "$dirname" | sed "s#^$root##")
+		echo "$relative_dir/$basename" >> "$root/info/exclude"
 		;;
 	.gitconfig)
 		#TODO. git config --get-all ?, then another dmenu? how many such config keys are allowed?
