@@ -8,7 +8,7 @@ fi
 
 HERE=$(pwd)
 
-(cd "$1" && git --git-dir=$HERE/.git diff ${2:-HEAD}) | \
+(cd "$1" && git --git-dir="$HERE/.git" diff "${2:-HEAD}") | \
     if [[ $stat == true ]]; then \
         diffstat | grep -v only$; \
     else \

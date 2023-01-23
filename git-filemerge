@@ -14,7 +14,7 @@ TMPDIR1=$(mktemp -d)
 git archive --format=tar $OLD | (cd "$TMPDIR1"; tar xf -)
 if test -z "$NEW"; then
 TMPDIR2=$(git rev-parse --show-cdup)
-test -z "$cdup" && TMPDIR2=.
+test -z "$TMPDIR2" && TMPDIR2=.
 else
 TMPDIR2=$(mktemp -d)
   git archive --format=tar $NEW | (cd "$TMPDIR2"; tar xf -)

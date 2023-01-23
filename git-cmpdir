@@ -6,7 +6,7 @@ if [[ "$1" == "--stat" ]]; then
     shift 1
 fi
 
-git checkout $1
+git checkout "$1"
 sync
 echo ----------------------------------------------------------------------
 
