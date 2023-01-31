@@ -1,7 +1,5 @@
 #!/bin/sh
 
-. git-sh-setup
-
 git_branch()
 {
 	git branch | grep '*' | sed 's/..//'
