@@ -7,5 +7,5 @@ fi
 git fetch --all
 
 for r in $(git branch -r --format='%(refname)'); do
-    git branch --merged $r;
+    git branch --merged "$r";
 done | sort -u | grep -v '^\*' | xargs -r echo # git branch -D

@@ -6,7 +6,7 @@
 ## This is free software, and you are welcome to redistribute it
 ## under certain conditions; see COPYING for details.
 
-# Purpose: This script adds all modified and deleted files, 
+# Purpose: This script adds all modified and deleted files,
 # except the new files and adds it to the recent commit by amending it
 
 set -e
@@ -14,7 +14,7 @@ set -e
 # User is not in git repository
 if ! git branch > /dev/null 2>&1
 then
-	echo "E: '$(basename ${PWD})' - Not a Git repository."
+	echo "E: '$(basename "${PWD}")' - Not a Git repository."
 	exit 1
 fi
 

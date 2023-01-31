@@ -27,10 +27,10 @@ fi
 REV="$1"
 shift
 
-while ! [ -z "$1" ]
+while [ -n "$1" ]
 do
-   if grep 'tex[[:space:]]*$' >/dev/null <<@ 
-$1 
+   if grep 'tex[[:space:]]*$' >/dev/null <<@
+$1
 @
    then
       FILE="$1"
@@ -39,7 +39,7 @@ $1
 
       docstart=$(grep -n 'begin{document}' "$FILE" | cut -d: -f1)
 
-      for i in $(GIT_DIFF_OPTS=-u0 git diff "$REV" "$FILE" | 
+      for i in $(GIT_DIFF_OPTS=-u0 git diff "$REV" "$FILE" |
                 sed -n '/^@@/s/@@ -[0-9,]* +\([0-9,]*\).*/\1/p')
       do
          start=$(cut -d, -f1 <<@
@@ -52,7 +52,7 @@ $i
 $i
 @
             then
-               diff=$(cut -d, -f2 <<@ 
+               diff=$(cut -d, -f2 <<@
 $i
 @
 )

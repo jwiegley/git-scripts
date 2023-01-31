@@ -5,6 +5,6 @@ branch=$2
 
 [ -z "$branch" ] && branch=HEAD
 
-git rev-list --children $branch --not $commit^@ \
+git rev-list --children "$branch" --not "$commit^@" \
    | awk "/^$commit/ { print \$2 }"
 

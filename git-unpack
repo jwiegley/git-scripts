@@ -5,7 +5,7 @@ if [ -f .git/objects/pack/*.pack ]; then
   GIT_DIR=/tmp/tmpgit.$$ git init
 
   for pack in .git/objects/pack/*.pack; do
-    GIT_DIR=/tmp/tmpgit.$$ git unpack-objects < $pack
+    GIT_DIR=/tmp/tmpgit.$$ git unpack-objects < "$pack"
     if [ $? -ne 0 ]; then
       echo "Unpack of $pack failed, aborting"
       exit 1

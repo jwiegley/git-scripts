@@ -14,7 +14,7 @@ fi
 commit=$(for i in $all; do
 	printf '%s\n' "$i "
 	# why is there no git diff --shortnumstat ?
-	git diff -M "$spec" $i | wc -l
+	git diff -M "$spec" "$i" | wc -l
 done | sort -k 2 -n | head -n 1 | cut -f 1 -d ' ')
 if [ "$mode" = diff ]; then
 	git log --no-walk "$commit" | cat -

@@ -5,28 +5,28 @@
 
 GIT=$(command -v git)
 
-if [ "x$1" = "x" -o "x$2" = "x" ];then
+if [ "$1" = "" -o "$2" = "" ];then
   echo "use: $0 <git_repository_to_clone> <directory>"
   exit 1
 fi
 
-if [ "x$GIT" = "x" ];then
+if [ "$GIT" = "" ];then
   echo "No git command found. install it"
 fi
 
 function clone {
 
-  $GIT clone -q $1 $2
+  $GIT clone -q "$1" "$2"
   res=$?
-  
+
   cd "$2"
-  
+
   $GIT pull --all
-  
+
   for remote in $($GIT branch -r | grep -v \>); do
-     $GIT branch --track ${remote#origin/} $remote;
+     $GIT branch --track "${remote#origin/}" "$remote";
   done
 }
 
 echo "cloning repository into ... $2"
-clone $1 "$2"
+clone "$1" "$2"
