@@ -1,6 +1,8 @@
 #!/bin/sh
 
-find . -name .git -type d | \
-while read path; do \
-(cd "$path/.."; echo $(dirname "$path") ; git status); \
-done
+find . -name .git -type d |
+    while read -r path; do
+        (
+            cd "$path/.." && dirname "$path" && git status
+        )
+    done

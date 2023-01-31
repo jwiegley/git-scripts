@@ -25,7 +25,7 @@ case $cmd in
         ;;
 
     pull|merge|rebase|am)
-        git reset --hard HEAD@{0}
+        git reset --hard "HEAD@{0}"
         ;;
 esac
 

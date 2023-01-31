@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-git subtree add --prefix $1 ext/$(basename $1) master --squash
+git subtree add --prefix "$1" "ext/$(basename "$1")" master --squash

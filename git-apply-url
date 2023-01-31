@@ -32,20 +32,20 @@
 URL=$1
 
 error() {
-  echo $*
+  echo "$*"
   exit 1
 }
 
-if [ ! $URL ]; then
-  error $0 URL
+if [ ! "$URL" ]; then
+  error "usage: $0 URL"
 fi
 
-if [ -x $(command -v curl) ] && [ $(curl -V | grep https) ]; then
+if command -v curl >/dev/null 2>&1 && curl -V | grep -q https >/dev/null 2>&1; then
   fetch="curl -s"
-elif [ -x $(command -v wget) ]; then
+elif command -v wget >/dev/null 2>&1; then
   fetch="wget -O - -q --no-check-certificate"
 else
   error need curl or wget
 fi
 
-$fetch $URL | patch -p1
+$fetch "$URL" | patch -p1
