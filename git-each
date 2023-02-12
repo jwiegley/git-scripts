@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -e
 
-DIRS="."
+dirs="."
 if [[ "$1" == --dir ]]; then
-    shift 1
-    DIRS="$1"
-    shift 1
+    dirs="$2"
+    shift 2
 fi
 
-exec find $DIRS \( -path '*/.git/config' -o \
+exec find $dirs \( -path '*/.git/config' -o \
                    -regex '.*/.git/.*/config' \) -type f -print0 \
-         | parallel -0 --bar -j0 --delay 1 -k "git --git-dir={//} $@"
+         | parallel -0 --bar -j0 --delay 1 -k "git --git-dir={//} $*"
