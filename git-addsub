@@ -12,7 +12,7 @@ for dir in "$@"; do
     SUBDIR=$(abspath "$dir")
     SUBDIR=$(echo $SUBDIR | sed s/$PROJ_RE//)
 
-    repo=$(echo $(grep "url = " "$dir/.git/config") | \
+    repo=$(grep "url = " "$dir/.git/config" | \
         sed 's/.*url = //' | \
         sed 's/git@github.com:\([^\/]*\)\//git:\/\/github.com\/\1\//' )
 

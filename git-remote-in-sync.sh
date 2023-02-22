@@ -12,13 +12,13 @@
 
 # written by Dieter Plaetinck
 
-list="$@"
+list="$*"
 [ -z "$list" ] && list=$(git remote)
 ret=0
 
 if [ -z "$(git branch)" ]
 then
-	if [ $(cd "$(git root)" && ls -Al | egrep -v "^(.git|total)" | wc -l) -gt 0 ]
+	if [ "$(cd "$(git root)" && ls -Al | grep -Ev "^(.git|total)" | wc -l)" -gt 0 ]
 	then
 		echo "WARN: This repo doesn't contain any branch, but contains a bunch of files!" >&2
 		ls -Alh "$(git root)"
@@ -39,10 +39,10 @@ then
 	echo "WARN: At least one branch, but no remotes found!  The content here might be unique!" >&2
 	ret=1
 else
-	if [ -n "$@" ]
+	if [ -n "$*" ]
 	then
-		echo "INFO: working with remote(s): $@"
-		echo "INFO: fyi, all remotes: "$(git remote)
+		echo "INFO: working with remote(s): $*"
+		echo "INFO: fyi, all remotes: $(git remote)"
 	else
 		echo "INFO: working with all remotes: $list"
 	fi
@@ -86,13 +86,13 @@ do
 	IFS=$IFS_BACKUP
 
 	# Check tags
-	out=$(git push --tags -n $remote 2>&1)
+	out=$(git push --tags -n "$remote" 2>&1)
 	if [ "$out" != 'Everything up-to-date' ];
 	then
 		echo -e "  WARN: Some tags are not in $remote!\n$out" >&2
 		ret=1
 	else
-		echo "  INFO: All tags ("$(git tag)") exist at $remote as well"
+		echo "  INFO: All tags ($(git tag)) exist at $remote as well"
 	fi
 done
 
@@ -122,7 +122,7 @@ then
 fi
 
 # Check stash
-if [ $(git stash list | wc -l) -gt 0 ];
+if [ "$(git stash list | wc -l)" -gt 0 ];
 then
 	echo "WARN: Dirty stash:" >&2
 	GIT_PAGER= git stash list >&2

@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-git subtree pull --prefix $1 ext/$(basename $1) master --squash
+git subtree pull --prefix "$1" "ext/$(basename "$1")" master --squash

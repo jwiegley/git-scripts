@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-git subtree push --prefix $1 fork/$(basename $1) master
+git subtree push --prefix "$1" "fork/$(basename "$1")" master
