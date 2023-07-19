@@ -57,12 +57,12 @@ do
         # If this is a gc-utils repo, use gc-utils update
         elif grep -q '^\[gc-utils\]' "$repo_dir"/config
         then
-            echo gc-update: $repo_dir
+            echo "gc-update: $repo_dir"
             (cd "$repo_dir"; gc-update)
 
         fi
 
-        echo $repo_dir
+        echo "$repo_dir"
         GIT_DIR="$repo_dir" git remote update
     fi
 
@@ -94,7 +94,7 @@ do
     for remote in $(GIT_DIR="$repo_dir" git remote)
     do
         if [[ $remote == mirror ]]; then
-            echo git push: $repo_dir -- $remote
+            echo "git push: $repo_dir -- $remote"
             GIT_DIR="$repo_dir" git push -f --mirror $remote
         fi
     done

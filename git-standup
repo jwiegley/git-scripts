@@ -77,7 +77,7 @@ if [[ ! -d ".git" ]]; then
             GITOUT=$(eval ${GIT_LOG_COMMAND})
 
             ## Only output if there is some activity
-            if [[ ! -z "$GITOUT" ]] ;  then
+            if [[ -n "$GITOUT" ]] ;  then
                 echo "${BOLD}${UNDERLINE}${YELLOW}$DIR${NORMAL}"
                 echo "$GITOUT"
             fi

@@ -3,4 +3,4 @@
 # (defaults to origin, but another remote may be specified on the commandline)
 
 diff -u <(git show-ref --tags --dereference) \
-    <(git ls-remote --tags $1 | tr '\t' ' ')
+    <(git ls-remote --tags "$1" | tr '\t' ' ')

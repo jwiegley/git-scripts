@@ -236,7 +236,7 @@ GetRemoteRefs() # (remote_repo_name)
 {
   local remote_repo=$1
 
-  GetRefs refs/remotes/$remote_repo
+  GetRefs "refs/remotes/$remote_repo"
 }
 
 GetStatus() # (base_commit compare_commit)
@@ -256,13 +256,13 @@ GetUpstreamBranch() # (local_branch)
 {
   local local_branch=$1
 
-  git rev-parse --abbrev-ref $local_branch@{upstream} 2> /dev/null
+  git rev-parse --abbrev-ref "$local_branch@{upstream}" 2> /dev/null
 }
 
 IsCurrentBranch() # (branch_name)
 {
   local branch=$1
-  local this_branch=$(AppendHeadDate $branch)
+  local this_branch=$(AppendHeadDate "$branch")
   local current_branch=$(AppendHeadDate $(GetCurrentBranch))
 
   [ "$this_branch" == "$current_branch" ] && echo 1 || echo 0
@@ -280,7 +280,7 @@ IsTrackedBranch() # (base_branch_name compare_branch_name)
 {
   local base_branch=$1
   local compare_branch=$2
-  local upstream_branch=$(GetUpstreamBranch $base_branch)
+  local upstream_branch=$(GetUpstreamBranch "$base_branch")
 
   [ "$compare_branch" == "$upstream_branch" ] && echo 1 || echo 0
 }
@@ -315,7 +315,7 @@ CurrentTtyW()
 PrintHRule() # (rule_width)
 {
   local rule_w=$1
-  local h_rule="$(dd if=/dev/zero bs=$rule_w count=1 2> /dev/null | tr '\0' $HRULE_CHAR)"
+  local h_rule="$(dd if=/dev/zero bs="$rule_w" count=1 2> /dev/null | tr '\0' $HRULE_CHAR)"
 
   echo "$MARGIN_PAD$h_rule"
 }
@@ -413,7 +413,7 @@ LocalReport()
   [ "$FILTER_BRANCH" ] && synchronized_msg="$BRANCH_SYNCED_MSG" || synchronized_msg="$LOCALS_SYNCED_MSG"
 
   # compare sync status of local branches to their upstreams
-  while read local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
+  while read -r local upstream ; do GenerateReport $local $upstream ; done < <(GetLocalRefs) ;
   PrintReport "local <-> upstream" "$synchronized_msg"
 }
 
@@ -424,7 +424,7 @@ RemoteReport()
 
   # compare sync status of remote branches to local branches with the same names
   for remote_repo in $(git remote)
-  do  while read remote_branch
+  do  while read -r remote_branch
       do    local local_branch=${remote_branch#$remote_repo/}
 
             GenerateReport $local_branch $remote_branch
@@ -448,7 +448,7 @@ GenerateReport() # (base_branch compare_branch)
   [ "$base_branch" != 'HEAD' ] || return
 
   # filter branches per CLI arg
-  [ -z "$FILTER_BRANCH" -o "$base_branch" == "$FILTER_BRANCH" ] || return
+  [ -z "$FILTER_BRANCH" ] || [ "$base_branch" == "$FILTER_BRANCH" ] || return
 
   # parse local<->remote or arbitrary branches sync status
   if   (( ! $does_base_branch_exist )) && (( ! $does_compare_branch_exist )) ; then return ;

@@ -2,4 +2,4 @@
 
 BRANCH=$(git-current-branch)
 
-git branch --set-upstream-to=origin/$BRANCH $BRANCH
+git branch --set-upstream-to="origin/$BRANCH" "$BRANCH"

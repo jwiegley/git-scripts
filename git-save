@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # To be used with the git-save-* scripts @ https://github.com/jwiegley/git-scripts
-mypath=$(dirname $0)
+mypath=$(dirname "$0")
 name="$1"
 shift
-if [ -x $mypath/git-save-$name ] ; then
+if [ -x "$mypath/git-save-$name" ] ; then
   exec git save-"$name" "$@"
 else
   echo "usage: git save <command>"

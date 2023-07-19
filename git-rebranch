@@ -22,4 +22,4 @@ fi
 
 git stash                   # stash away working tree changes
 
-git checkout -b $newbranch -t $remote
+git checkout -b "$newbranch" -t "$remote"

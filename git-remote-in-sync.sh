@@ -57,7 +57,7 @@ do
 	# "To prevent you from losing history, non-fast-forward updates were rejected"
 	# Since such an approach does traffic with the remote anyway, I choose to fetch the origin
 	# and inspect it's branches.  This is a bit inefficient network-wise, but couldn't see a better solution
-	if ! git fetch $remote
+	if ! git fetch "$remote"
 	then
 		echo "  WARN: could not git fetch $remote" >&2
 		ret=1
@@ -68,7 +68,7 @@ do
 	do
 		branch=${branch/\*/};
 		branch_local=${branch// /}; # git branch prefixes branches with spaces. and spaces in branchnames are illegal.
-		if ! git branch -r --contains $branch_local 2>/dev/null | grep -q "^  $remote/"
+		if ! git branch -r --contains "$branch_local" 2>/dev/null | grep -q "^  $remote/"
 		then
 			echo "  WARN: Branch $branch_local is not contained within remote $remote!" >&2
 			ret=1

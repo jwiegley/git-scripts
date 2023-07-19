@@ -10,7 +10,7 @@ PROJ_RE=$(echo "$PROJ_DIR/" | sed 's/\//\\\//g')
 
 for dir in "$@"; do
     SUBDIR=$(abspath "$dir")
-    SUBDIR=$(echo $SUBDIR | sed s/$PROJ_RE//)
+    SUBDIR=$(echo "$SUBDIR" | sed "s/$PROJ_RE//")
 
     repo=$(grep "url = " "$dir/.git/config" | \
         sed 's/.*url = //' | \
