@@ -80,25 +80,39 @@ class Commit < GitObject
   end
 
   def assign_name(name)
-    if @names.include?(name)
-      return
-    end
-    puts name
-    add_name(name)
-
-    offset = 0
-    @parents.each do |parent|
-      if offset == 0
-        if name =~ /(.+?)~([0-9]+)$/
-          child_name = $1 + "~" + ($2.to_i + 1).to_s
+    # Use iterative approach with a queue to avoid stack overflow
+    queue = [[self, name]]
+    visited = {}
+    
+    while !queue.empty?
+      commit, commit_name = queue.shift
+      
+      # Skip if we've already assigned a name to this commit
+      next if commit.names.include?(commit_name)
+      
+      # Skip if we've already visited this commit with this specific name pattern
+      visit_key = "#{commit.ident}:#{commit_name}"
+      next if visited[visit_key]
+      visited[visit_key] = true
+      
+      puts commit_name
+      commit.add_name(commit_name)
+      
+      # Add parents to the queue
+      offset = 0
+      commit.parents.each do |parent|
+        if offset == 0
+          if commit_name =~ /(.+?)~([0-9]+)$/
+            child_name = $1 + "~" + ($2.to_i + 1).to_s
+          else
+            child_name = commit_name + "~1"
+          end
         else
-          child_name = name + "~1"
+          child_name = commit_name + "^" + (offset + 1).to_s
         end
-      else
-        child_name = name + "^" + (offset + 1).to_s
+        queue.push([parent, child_name])
+        offset += 1
       end
-      parent.assign_name(child_name)
-      offset += 1
     end
   end
 end
@@ -183,7 +197,7 @@ puts "Processing refs history ..."
 $refs.each { |ref| get_ref_history(ref) }
 $refs.each { |ref| process_names(ref) }
 
-$hashes = ARGV[0].map { |ref| `git rev-parse #{ref}`.chomp }
+$hashes = ARGV.map { |ref| `git rev-parse #{ref}`.chomp }
 
 $search_reflogs = false
 $hashes.each do |hash|
@@ -240,7 +254,7 @@ if $search_dangling
   end
 end
 
-ARGV[0].each do |ref|
+ARGV.each do |ref|
   hash = `git rev-parse #{ref}`.chomp
 
   object = $objects[hash]
