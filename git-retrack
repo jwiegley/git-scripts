@@ -11,4 +11,5 @@ if [ -n "$2" ]; then
 fi
 
 git config branch.$branch.remote "${1:-origin}"
+git config branch.$branch.pushRemote "${1:-origin}"
 git config branch.$branch.merge "refs/heads/${3:-$branch}"
